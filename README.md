@@ -5,13 +5,39 @@ Carte de monitoring avancée pour Home Assistant permettant de suivre en temps r
 ![Dashboard Preview](assets/dashboard_preview.gif)
 
 ## Filtres & Tri Dynamique
-### Intégrations (Sources de Données)
-Pour alimenter les jauges et les alertes, le système s'appuie sur :
-- **Home Assistant Supervisor** : *Add-ons* (CPU, RAM, Statut).
-- **Glances** : *Hôte* (RAM réelle, Espace Disque, Température fine).
-- **System Monitor** : *Hôte* (Charge Processeur, Température globale).
+- **Host Monitoring** : Affichage des constantes vitales (CPU, RAM, Disque, Température) via des Chips.
+- **Top Add-ons** : Classement automatique des services par consommation.
+- **Interactivité** : Double-clic pour démarrer/arrêter un Add-on (avec sécurité contre les erreurs).
+- **Design Pill** : Bords arrondis 33px et transparence totale avec contours fins.
 
-## 🚨 Système d'Alertes Intelligentes
+## Pré-requis
+
+### Cartes Lovelace (via [HACS](https://hacs.xyz/))
+- 🍄 [Mushroom Cards](https://github.com/piitaya/lovelace-mushroom)
+- 🗂️ [Auto-entities](https://github.com/thomasloven/lovelace-auto-entities)
+- 🎨 [Card-mod](https://github.com/thomasloven/lovelace-card-mod)
+- 📂 [Fold-entity-row](https://github.com/thomasloven/lovelace-fold-entity-row)
+
+### Packs d'Icônes (via [HACS](https://hacs.xyz/))
+Certaines icônes premium utilisées dans la carte nécessitent l'installation de ces packs :
+- 📦 [Plug-and-Hyve Icons (phu)](https://github.com/Mariusthvdb/phu-icons)
+- 💎 [Material Symbols (m3r, m3rf)](https://github.com/beecho01/material-symbols)
+
+### Intégrations (Sources de Données)
+Ce système s'appuie sur plusieurs intégrations pour fournir une vision complète (Hôte + Add-ons) :
+
+*   **Home Assistant Supervisor** :
+    *   *Usage* : Monitoring dynamique des Add-ons.
+    *   *Données* : CPU %, RAM %, Statut (Running/Stopped).
+*   **Glances** (Add-on + Intégration) :
+    *   *Usage* : Monitoring global de l'Hôte (Chips du Dashboard + Alertes).
+    *   *Données* : RAM Réelle, Espace Disque utilisé, Températures fines.
+*   **System Monitor** (Intégration Core) :
+    *   *Usage* : Complément pour l'Hôte.
+    *   *Données* : Charge Processeur moyenne (1m/5m/15m), Débit Réseau.
+
+> 💡 **Note** : Les "Chips" en haut de la carte et les alertes "Santé Hôte" dépendent directement de **Glances** et **System Monitor**. Assurez-vous qu'ils sont installés.
+
 ## 🚨 Système d'Alertes Intelligentes
 
 Ce projet ne se contente pas d'afficher des jauges, il surveille activement votre système via une **Automatisation Unique** (`alertes_ressources.yaml`).
