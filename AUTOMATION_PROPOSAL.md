@@ -98,6 +98,9 @@ Une fois l'alerte levée, qu'est-ce qu'on fait ?
 
 Quelle profondeur d'automatisation veux-tu ? (Juste prévenir ? Ou tenter de réparer ?)
 
+## 4. Structure Technique (Le Chaînage)
+Ton script `k_2so_generateur_de_message` renvoie la variable `generated_message`.
+
   # --------------------------------------------------------------------------
   # B. BRAIN : K-2SO GÉNÈRE LE MESSAGE 🧠
   # --------------------------------------------------------------------------
@@ -116,10 +119,23 @@ Quelle profondeur d'automatisation veux-tu ? (Juste prévenir ? Ou tenter de ré
         {% endif %}
       
       details: >
-        Analyse technique à {{ now().strftime('%H:%M') }} :
         - CPU : {{ enquete.resultat.cpu }}%
         - RAM : {{ enquete.resultat.ram }}%
         - État : {{ enquete.resultat.etat }}
       
-      consigne: "Sois technique, sarcastique et bref. Moque-toi de la stabilité du système."
-    response_variable: k2so_output
+      consigne: "Sois technique, sarcastique et bref."
+    response_variable: generated_message
+
+  # --------------------------------------------------------------------------
+  # C. NOTIFICATION DISCORD
+  # --------------------------------------------------------------------------
+  - action: script.notification_discord
+    data:
+      nom: "Monitor System"
+      description: "{{ generated_message.generated_message.data }}"
+      image_url: >
+        {% if enquete.resultat.etat == 'OFF' %}
+          https://brands.home-assistant.io/hassio/icon.png
+        {% else %}
+          https://brands.home-assistant.io/homeassistant/icon.png
+        {% endif %}
