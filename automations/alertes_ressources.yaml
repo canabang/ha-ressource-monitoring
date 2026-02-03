@@ -1,3 +1,7 @@
+# --------------------------------------------------------------------------------------------------
+# AUTOMATISATION AVANCÉE (VERSION PERSO)
+# ⚠️ Nécessite : script.k_2so_generateur_de_message et script.notification_discord
+# --------------------------------------------------------------------------------------------------
 alias: "Système • Surveillance & Alertes 🛡️"
 description: "Surveillance dynamique des Add-ons (basée sur CPU) et de l'hôte."
 

@@ -1,0 +1,304 @@
+blueprint:
+  name: "Système • Surveillance & Alertes 🛡️"
+  description: >
+    Surveillance dynamique des Add-ons (basée sur CPU) et de l'hôte.
+    Génère des alertes pour : Crash Add-on, Surcharge Add-on, Surchauffe Hôte, RAM/Disque/GPU Hôte.
+    
+    **Variables disponibles dans l'action de notification :**
+    - `{{ generated_message }}` : Le message standard généré.
+    - `{{ infos_coupable }}` : Objet avec les détails (.nom, .cpu, .ram, .etat).
+  domain: automation
+  icon: mdi:monitor-dashboard
+  input:
+    # --- 1. SURVEILLANCE ADD-ONS ---
+    addon_cpu_threshold:
+      name: Seuil Alerte CPU Add-on
+      description: "Pourcentage CPU déclenchant une alerte surcharge."
+      default: 80
+      selector:
+        number:
+          min: 10
+          max: 100
+          unit_of_measurement: "%"
+    addon_cpu_duration:
+      name: Durée Surcharge CPU
+      description: "Temps nécessaire avant alerte (minutes)."
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 60
+          unit_of_measurement: "min"
+    addon_crash_duration:
+      name: Délai Détection Crash
+      description: "Temps après l'arrêt (OFF) avant alerte (minutes)."
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 10
+          unit_of_measurement: "min"
+
+    # --- 2. SURVEILLANCE HÔTE (MAPPING) ---
+    sensor_host_temp:
+      name: 🌡️ Capteur Température CPU
+      description: "Le capteur de température de votre processeur."
+      default: sensor.system_monitor_temperature_du_processeur
+      selector:
+        entity:
+          domain: sensor
+          device_class: temperature
+    threshold_host_temp:
+      name: Seuil Surchauffe
+      default: 75
+      selector:
+        number:
+          min: 40
+          max: 100
+          unit_of_measurement: "°C"
+
+    sensor_host_ram:
+      name: 💾 Capteur RAM
+      description: "Capteur de pourcentage d'utilisation RAM."
+      default: sensor.glances_ha_utilisation_de_la_memoire
+      selector:
+        entity:
+          domain: sensor
+    threshold_host_ram:
+      name: Seuil Surcharge RAM
+      default: 90
+      selector:
+        number:
+          min: 50
+          max: 100
+          unit_of_measurement: "%"
+
+    sensor_host_disk:
+      name: 💿 Capteur Disque
+      description: "Capteur de pourcentage d'utilisation Disque."
+      default: sensor.glances_ha_utilisation_disque_data
+      selector:
+        entity:
+          domain: sensor
+    threshold_host_disk:
+      name: Seuil Disque Plein
+      default: 90
+      selector:
+        number:
+          min: 50
+          max: 100
+          unit_of_measurement: "%"
+
+    sensor_host_gpu:
+      name: 🎮 Capteur GPU (Optionnel)
+      description: "Capteur de charge GPU (laisser vide si aucun)."
+      default: []
+      selector:
+        entity:
+          domain: sensor
+          multiple: false
+    threshold_host_gpu:
+      name: Seuil Surcharge GPU
+      default: 90
+      selector:
+        number:
+          min: 50
+          max: 100
+          unit_of_measurement: "%"
+
+    # --- 3. OPTIONS AVANCÉES ---
+    exclude_regex:
+      name: Filtre d'exclusion (Regex)
+      description: "Processus à ignorer dans le scan dynamique."
+      default: "node_|qemu_|pc_debian_"
+      selector:
+        text:
+
+    sensor_host_cpu_global:
+      name: 🧠 Capteur CPU Global
+      description: "Utilisé uniquement pour l'info dans le message."
+      default: sensor.system_monitor_utilisation_du_processeur
+      selector:
+        entity:
+          domain: sensor
+
+    # --- 4. NOTIFICATION ---
+    notification_action:
+      name: Action de Notification
+      description: "L'action à exécuter. Utilisez {{ generated_message }} pour le message."
+      selector:
+        action:
+
+trigger_variables:
+  exclude_regex_var: !input exclude_regex
+  cpu_threshold_var: !input addon_cpu_threshold
+
+trigger:
+  # 1. ADD-ON CRASH
+  - platform: template
+    id: "addon_crash"
+    value_template: >
+      {# NOTE: On utilise la variable defined dans trigger_variables #}
+      {% set pattern = exclude_regex_var %}
+      {% set sensors = states.sensor 
+         | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
+         | rejectattr('entity_id', 'search', pattern)
+         | list %}
+      {% set ns = namespace(crashed=[]) %}
+      {% for cpu in sensors %}
+        {% set base = cpu.entity_id.replace('sensor.', '').replace('_cpu_percent', '').replace('_pourcentage_du_processeur', '') %}
+        {% set st_run = "binary_sensor." ~ base ~ "_running" %}
+        {% set st_exec = "binary_sensor." ~ base ~ "_en_cours_d_execution" %}
+        {% set status_ent = st_run if states(st_run) != 'unknown' else st_exec %}
+        {# On vérifie si le CPU existe (state != unknown) MAIS que le statut est OFF #}
+        {% if states(status_ent) == 'off' %}
+          {% set ns.crashed = ns.crashed + [1] %}
+        {% endif %}
+      {% endfor %}
+      {{ ns.crashed | count > 0 }}
+    for: 
+      minutes: !input addon_crash_duration
+
+  # 2. SURCHARGE CPU ADD-ON
+  - platform: template
+    id: "cpu_overload"
+    value_template: >
+      {% set pattern = exclude_regex_var %}
+      {% set threshold = cpu_threshold_var | float(80) %}
+      {{ states.sensor 
+         | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
+         | rejectattr('entity_id', 'search', pattern)
+         | map(attribute='state') 
+         | map('float', 0) 
+         | select('gt', threshold) 
+         | list | count > 0 }}
+    for: 
+      minutes: !input addon_cpu_duration
+
+  # 3. HOST TRIGGERS (Simple)
+  - platform: numeric_state
+    entity_id: !input sensor_host_temp
+    above: !input threshold_host_temp
+    for: "00:02:00"
+    id: "host_heat"
+
+  - platform: numeric_state
+    entity_id: !input sensor_host_ram
+    above: !input threshold_host_ram
+    for: "00:05:00"
+    id: "host_ram"
+
+  - platform: numeric_state
+    entity_id: !input sensor_host_disk
+    above: !input threshold_host_disk
+    for: "00:05:00"
+    id: "host_disk"
+
+  - platform: numeric_state
+    entity_id: !input sensor_host_gpu
+    above: !input threshold_host_gpu
+    for: "00:02:00"
+    id: "host_gpu"
+
+action:
+  # --- CALCUL DES VARIABLES (ENQUÊTE) ---
+  - variables:
+      # Import des inputs pour usage Jinja
+      exclude_filter: !input exclude_regex
+      cpu_threshold: !input addon_cpu_threshold
+      
+      # Entités Hôte
+      ent_cpu_global: !input sensor_host_cpu_global
+      ent_ram: !input sensor_host_ram
+      ent_disk: !input sensor_host_disk
+      ent_gpu: !input sensor_host_gpu
+
+      infos_coupable: >
+        {% set enquete = namespace(resultat={'nom': 'Système', 'identifiant_icone': 'homeassistant', 'cpu': 0, 'ram': 0, 'disk': 0, 'etat': 'Inconnu'}) %}
+        
+        {# SCAN #}
+        {% set liste_capteurs_cpu = states.sensor 
+           | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
+           | rejectattr('entity_id', 'search', exclude_filter)
+           | list %}
+
+        {% if trigger.id == 'addon_crash' %}
+          {# CAS CRASH #}
+          {% set corrections_icones = {
+            'frigate_full_access': 'frigate', 'studio_code_server': 'hassio', 
+            'ssh_web_terminal': 'hassio', 'glances': 'glances'
+          } %}
+          {% for capteur_cpu in liste_capteurs_cpu %}
+            {% set id_brut = capteur_cpu.entity_id.replace('sensor.', '').replace('_cpu_percent', '').replace('_pourcentage_du_processeur', '') %}
+            {% set entite_running_anglais = "binary_sensor." ~ id_brut ~ "_running" %}
+            {% set entite_running_francais = "binary_sensor." ~ id_brut ~ "_en_cours_d_execution" %}
+            {% set entite_statut_reelle = entite_running_anglais if states(entite_running_anglais) != 'unknown' else entite_running_francais %}
+            
+            {% if states(entite_statut_reelle) == 'off' %}
+              {% set enquete.resultat = {
+                'nom': state_attr(entite_statut_reelle, 'friendly_name') | default(id_brut),
+                'identifiant_icone': corrections_icones.get(id_brut, id_brut),
+                'cpu': states(capteur_cpu.entity_id) | float(0),
+                'ram': states(capteur_cpu.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')) | float(0),
+                'disk': 0,
+                'etat': 'OFF'
+              } %}
+            {% endif %}
+          {% endfor %}
+
+        {% elif trigger.id == 'cpu_overload' %}
+           {# CAS SURCHARGE #}
+           {% set gros_consommateur = liste_capteurs_cpu 
+              | selectattr('state', 'is_number')
+              | selectattr('state', 'gt', cpu_threshold)
+              | sort(attribute='state', reverse=True) 
+              | first %}
+           
+           {% if gros_consommateur %}
+             {% set enquete.resultat = {
+                'nom': state_attr(gros_consommateur.entity_id, 'friendly_name') | default(gros_consommateur.entity_id),
+                'identifiant_icone': gros_consommateur.entity_id.replace('sensor.', '').replace('_cpu_percent', '').replace('_pourcentage_du_processeur', '').replace('_full_access', ''),
+                'cpu': gros_consommateur.state | float(0),
+                'ram': states(gros_consommateur.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')) | float(0),
+                'disk': 0,
+                'etat': 'SURCHARGE'
+             } %}
+           {% endif %}
+
+        {% elif trigger.id == 'host_disk' %}
+           {# CAS DISQUE #}
+           {% set enquete.resultat = {
+              'nom': 'Stockage Système', 'identifiant_icone': 'homeassistant',
+              'cpu': states(ent_cpu_global) | float(0),
+              'ram': states(ent_ram) | float(0), 'disk': states(ent_disk) | float(0),
+              'etat': 'DISQUE PLEIN'
+           } %}
+
+        {% elif trigger.id == 'host_gpu' %}
+           {# CAS GPU #}
+           {% set gpu_val = 0 if ent_gpu == [] else states(ent_gpu) | float(0) %}
+           {% set enquete.resultat = {
+              'nom': 'GPU', 'identifiant_icone': 'frigate',
+              'cpu': gpu_val,
+              'ram': states(ent_ram) | float(0), 'disk': states(ent_disk) | float(0),
+              'etat': 'SURCHARGE GPU'
+           } %}
+        
+        {% else %}
+           {# CAS CASSE GÉNÉRALE (Hog/Heat/Ram) #}
+           {% set enquete.resultat = {
+              'nom': 'Serveur Hôte', 'identifiant_icone': 'homeassistant',
+              'cpu': states(ent_cpu_global) | float(0),
+              'ram': states(ent_ram) | float(0), 'disk': states(ent_disk) | float(0),
+              'etat': 'CRITIQUE'
+           } %}
+        {% endif %}
+        {{ enquete.resultat }}
+
+  # --- MESSAGE STANDARD ---
+  - variables:
+      generated_message: "⚠️ Alerte **{{ infos_coupable.nom }}** : État {{ infos_coupable.etat }} (CPU: {{ infos_coupable.cpu }}%, RAM: {{ infos_coupable.ram }}%{% if infos_coupable.disk > 0 %}, Disque: {{ infos_coupable.disk }}%{% endif %})"
+
+  # --- NOTIFICATION ---
+  - choose: []
+    default: !input notification_action

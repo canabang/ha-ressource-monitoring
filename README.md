@@ -1,6 +1,8 @@
 # ha-ressource-monitoring
 
-Carte de monitoring avancée pour Home Assistant permettant de suivre en temps réel les ressources (CPU/RAM) de l'hôte et des Add-ons (**Home Assistant Supervisor**).
+**Solution complète de Monitoring & Alertes pour Home Assistant.**
+
+Combine une **Carte Dashboard interactive** pour le suivi temps réel et un **Système d'Alertes** proactif (via Blueprint ou IA) pour garantir la santé de votre Hôte et de vos Add-ons.
 
 ![Dashboard Preview](assets/dashboard_preview.gif)
 
@@ -42,6 +44,10 @@ Ce système s'appuie sur plusieurs intégrations pour fournir une vision complè
 
 Ce projet ne se contente pas d'afficher des jauges, il surveille activement votre système via une **Automatisation Unique** (`alertes_ressources.yaml`).
 
+> Un **[Blueprint Universel](blueprints/alertes_ressources.yaml)** est disponible pour une installation facile sans mes scripts IA et notifications discord (voir plus bas).
+
+
+
 ### Fonctionnalités
 *   **Détection proactive de Crash** : Si un Add-on s'arrête (statut `OFF` alors que le CPU existe), vous êtes notifié immédiatement (délai 1 min).
 *   **Surveillance Surcharge Add-on** : Alerte si un Add-on dépasse 80% de CPU pendant 5 minutes.
@@ -77,6 +83,12 @@ Le rendu est optimisé pour Discord avec :
 2.  Passez en mode **YAML** (3 petits points en haut à droite).
 3.  Copiez-collez le contenu du fichier [`automations/alertes_ressources.yaml`](automations/alertes_ressources.yaml).
 4.  Sauvegardez.
+
+### 2b. Alternative : Le Blueprint (Recommandé pour les autres utilisateurs)
+Si vous ne souhaitez pas utiliser l'IA ou modifier du code yaml, utilisez le Blueprint :
+1.  Copiez [`blueprints/alertes_ressources.yaml`](blueprints/alertes_ressources.yaml) dans `/config/blueprints/automation/perso/`.
+2.  Créez une automatisation via **Paramètres** > **Utiliser un plan** > **"Système • Surveillance & Alertes 🛡️"**.
+3.  Configurez simplement vos seuils et votre notification !
 
 ### 3. (Optionnel) Le Rafraîchissement Turbo
 Pour une réactivité à 5 secondes (recommandé pour les jauges), créez une seconde automatisation avec le contenu de [`automations/turbo_refresh.yaml`](automations/turbo_refresh.yaml).
@@ -150,4 +162,20 @@ Contrairement aux Add-ons, les "Chips" (en haut) pointent vers des entités fixe
 *   **RAM** : `sensor.glances_ha_utilisation_de_la_memoire` (%) et `sensor.glances_ha_memoire_utilisee` (GiB)
 *   **Disque** : `sensor.glances_ha_utilisation_disque_data`
 *   **Température** : `sensor.system_monitor_temperature_du_processeur`
-*   **GPU** : `sensor.frigate_intel_vaapi_gpu_load` (Spécifique N100/N150)
+*   **GPU** : `sensor.frigate_intel_vaapi_gpu_load` (Spécifique à mon N100/N150)
+
+## ❓ Dépannage (FAQ)
+
+### La carte reste vide ou affiche des erreurs
+*   Vérifiez que vous avez bien installé **Auto-entities** et **Mushroom** via HACS.
+*   Assurez-vous que vos sensors CPU contiennent bien les termes `cpu_percent` ou `pourcentage_du_processeur` (Regardez dans Outils de développement > États).
+
+### J'ai des doublons d'alertes
+*   Si vous avez activé le Blueprint ET gardé votre ancienne automatisation, c'est normal. Désactivez l'une des deux.
+
+### Le Blueprint ne me propose pas mon sensor GPU
+*   Le sélecteur attend un `sensor`. Si votre intégration fournit un attribut, vous devez d'abord créer un Template Sensor intermédiaire.
+
+### Mes jauges ne bougent pas vite
+*   Par défaut, Home Assistant rafraîchit les infos système toutes les 15-60 secondes.
+*   Pour avoir du temps réel (5s), installez l'automatisation **Turbo Refresh** (voir section Installation). *Attention à la taille de votre base de données !*

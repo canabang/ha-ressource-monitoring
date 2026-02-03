@@ -1,3 +1,10 @@
+# --------------------------------------------------------------------------------------------------
+# ⚠️ ATTENTION : IMPACT PERFORMANCE
+# --------------------------------------------------------------------------------------------------
+# Cette automatisation force la mise à jour des capteurs toutes les 5 secondes.
+# CELA REMPLIT LA BASE DE DONNÉES (RECORDER) TRÈS VITE.
+# CONSEIL : Excluez ces entités de votre configuration 'recorder' si vous utilisez ce mode.
+# --------------------------------------------------------------------------------------------------
 alias: "🏠 System - Turbo Monitoring Refresh 5s"
 description: "Force la mise à jour des entités de ressources toutes les 5 secondes."
 trigger:
