@@ -28,10 +28,38 @@ Certaines icônes premium utilisées dans la carte nécessitent l'installation d
 - **Glances** : Crucial pour les métriques de l'Hôte dans les Chips (Utilisation RAM en % et GiB, Utilisation Disque).
 - **System Monitor** : Fournit les métriques Host de base (Usage CPU moyen, Température processeur).
 
-## Installation
+## 🚨 Système d'Alertes Intelligentes
 
-### 1. La Carte (Frontend)
-Créez une carte **Manuel** et collez le contenu de [monitoring_card.yaml](cards/monitoring_card.yaml).
+Ce projet ne se contente pas d'afficher des jauges, il surveille activement votre système via une **Automatisation Unique** (`alertes_ressources.yaml`).
+
+### Fonctionnalités
+*   **Détection proactive de Crash** : Si un Add-on s'arrête (statut `OFF` alors que le CPU existe), vous êtes notifié immédiatement (délai 1 min).
+*   **Surveillance Surcharge Add-on** : Alerte si un Add-on dépasse 80% de CPU pendant 5 minutes.
+*   **Santé de l'Hôte** :
+    *   Surchauffe Processeur (> 75°C)
+    *   Surcharge RAM (> 90%)
+    *   Disque Plein (> 90%)
+    *   Surcharge GPU (> 90%)
+
+### 🤖 L'Intelligence Artificielle (K-2SO)
+Les alertes ne sont pas de simples logs. Elles sont traitées par le script **K-2SO** (IA locale ou cloud) qui génère un message contextuel :
+*   **Technique** : Il reçoit les stats précises (CPU, RAM, Disque).
+*   **Sarcastique** : Il commente la situation avec son "cynisme bienveillant".
+*   **Pertinent** : Il filtre les infos inutiles (pas de disque = pas d'info disque).
+
+### 📱 Notifications (Discord)
+Le rendu est optimisé pour Discord avec :
+*   **Titre Visuel** : `🚨 CRASH : Frigate` ou `⚠️ SURCHARGE`.
+*   **Icône Dynamique** : Affiche automatiquement le logo de l'intégration concernée (via `brands.home-assistant.io`) ou une icône générique si inconnu.
+*   **Message IA** : Le texte généré par K-2SO.
+
+---
+
+## 🛠️ Installation
+
+1.  Copiez le dossier `www` pour les dépendances (si nécessaire).
+2.  Ajoutez le contenu de `packages` ou copiez les fichiers YAML.
+yaml](cards/monitoring_card.yaml).
 
 ### 2. Le Rafraîchissement Turbo (Backend)
 Pour une réactivité à 5 secondes (recommandé si vos capteurs sont exclus du recorder), importez l'automation [turbo_refresh.yaml](automations/turbo_refresh.yaml).
