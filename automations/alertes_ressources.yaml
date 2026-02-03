@@ -78,6 +78,7 @@ trigger:
   # --------------------------------------------------------------------------
   # A. ENQUÊTE (Variables) : Qui appelle ?
   # --------------------------------------------------------------------------
+action:
   - variables:
       infos_coupable: >
         {# On initialise l'enquête avec des valeurs par défaut #}
@@ -212,28 +213,4 @@ trigger:
       # Icône Dynamique (Offielle Home Assistant Brands)
       image_url: "https://brands.home-assistant.io/{{ enquete.resultat.identifiant_icone }}/icon.png"
 
-  # --------------------------------------------------------------------------
-  # B. BRAIN : K-2SO GÉNÈRE LE MESSAGE 🧠
-  # --------------------------------------------------------------------------
-  - action: script.k_2so_generateur_de_message
-    data:
-      mission: >
-        {% set info = enquete.resultat %}
-        {% if info.etat == 'OFF' %}
-          Panne Critique : {{ info.nom }} ne répond plus.
-        {% elif 'SURCHARGE' in info.etat %}
-          Surcharge Système : {{ info.nom }} souffre.
-        {% elif 'DISQUE' in info.etat %}
-          Espace Disque Critique : {{ info.nom }} est saturé.
-        {% else %}
-          Alerte Ressources : {{ info.nom }} est en zone rouge.
-        {% endif %}
-      
-      details: >
-        - CPU : {{ enquete.resultat.cpu }}%
-        - RAM : {{ enquete.resultat.ram }}%
-        - Disque : {{ enquete.resultat.disk }}%
-        - État : {{ enquete.resultat.etat }}
-      
-      consigne: "Sois technique, sarcastique et bref."
-    response_variable: generated_message
+
