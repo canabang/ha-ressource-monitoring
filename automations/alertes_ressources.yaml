@@ -127,8 +127,7 @@ action:
                 'ram': states(gros_consommateur.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')),
                 'etat': 'SURCHARGE'
              } %}
-           {% endif %}
-        
+
            {% endif %}
 
         {% elif trigger.id == 'host_disk' %}
