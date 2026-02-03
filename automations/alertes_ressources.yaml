@@ -81,7 +81,7 @@ trigger:
   - variables:
       infos_coupable: >
         {# On initialise l'enquête avec des valeurs par défaut #}
-        {% set enquete = namespace(resultat={'nom': 'Système', 'cpu': 0, 'ram': 0, 'etat': 'Inconnu'}) %}
+        {% set enquete = namespace(resultat={'nom': 'Système', 'cpu': 0, 'ram': 0, 'disk': 0, 'etat': 'Inconnu'}) %}
         
         {# 1. SCAN : On récupère tous les candidats via leur CPU #}
         {% set liste_capteurs_cpu = states.sensor 
@@ -134,7 +134,8 @@ trigger:
               'nom': 'Stockage Système',
               'cpu': states('sensor.system_monitor_utilisation_du_processeur'),
               'ram': states('sensor.glances_ha_utilisation_de_la_memoire'),
-              'etat': 'DISQUE PLEIN (' ~ states('sensor.glances_ha_utilisation_disque_data') ~ '%)'
+              'disk': states('sensor.glances_ha_utilisation_disque_data'),
+              'etat': 'DISQUE PLEIN'
            } %}
 
         {% elif trigger.id == 'host_gpu' %}
@@ -143,6 +144,7 @@ trigger:
               'nom': 'Puce Graphique (Intel)',
               'cpu': states('sensor.frigate_intel_vaapi_gpu_load'),
               'ram': states('sensor.glances_ha_utilisation_de_la_memoire'),
+              'disk': states('sensor.glances_ha_utilisation_disque_data'),
               'etat': 'SURCHARGE GPU'
            } %}
         
@@ -152,6 +154,7 @@ trigger:
               'nom': 'Serveur Hôte (N100)',
               'cpu': states('sensor.system_monitor_utilisation_du_processeur'),
               'ram': states('sensor.glances_ha_utilisation_de_la_memoire'),
+              'disk': states('sensor.glances_ha_utilisation_disque_data'),
               'etat': 'CRITIQUE'
            } %}
         {% endif %}
