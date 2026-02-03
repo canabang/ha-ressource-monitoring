@@ -2,7 +2,7 @@
 
 Carte de monitoring avancée pour Home Assistant permettant de suivre en temps réel les ressources (CPU/RAM) de l'hôte et des Add-ons (**Home Assistant Supervisor**).
 
-![Dashboard Preview](assets/dashboard_preview.png)
+![Dashboard Preview](assets/dashboard_preview.gif)
 
 ## Filtres & Tri Dynamique
 - **Host Monitoring** : Affichage des constantes vitales (CPU, RAM, Disque, Température) via des Chips.

@@ -175,7 +175,6 @@ cards:
           "head": {
             "type": "custom:mushroom-template-card",
             "primary": "Autres services (" ~ (sorted_items | length - 5) ~ ")",
-            "secondary": "Double-clic pour basculer",
             "icon": "mdi:chevron-down",
             "icon_color": "disabled",
             "layout": "horizontal",
