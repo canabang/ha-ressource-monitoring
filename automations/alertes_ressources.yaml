@@ -75,14 +75,13 @@ trigger:
     for: "00:02:00"
     id: "host_gpu"
 
-action:
   # --------------------------------------------------------------------------
   # A. ENQUÊTE (Variables) : Qui appelle ?
   # --------------------------------------------------------------------------
   - variables:
       infos_coupable: >
-        {# On initialise un objet vide par défaut #}
-        {% set ns = namespace(infos={'nom': 'Système', 'cpu': 0, 'ram': 0, 'etat': 'Inconnu'}) %}
+        {# On initialise l'enquête avec des valeurs par défaut #}
+        {% set enquete = namespace(resultat={'nom': 'Système', 'cpu': 0, 'ram': 0, 'etat': 'Inconnu'}) %}
         
         {# 1. SCAN : On récupère tous les candidats via leur CPU #}
         {% set cpu_sensors = states.sensor 
@@ -101,8 +100,8 @@ action:
             {% set final_st = status_ent if states(status_ent) != 'unknown' else st_exec %}
             
             {% if states(final_st) == 'off' %}
-              {# C'est lui ! On remplit la fiche d'infos #}
-              {% set ns.infos = {
+              {# C'est lui ! On clôture l'enquête #}
+              {% set enquete.resultat = {
                 'nom': state_attr(final_st, 'friendly_name') | default(base),
                 'cpu': states(cpu.entity_id),
                 'ram': states(cpu.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')),
@@ -115,7 +114,7 @@ action:
            {# CAS SURCHARGE : On cherche le plus gros consommateur #}
            {% set hog = cpu_sensors | sort(attribute='state', reverse=True) | first %}
            {% if hog %}
-             {% set ns.infos = {
+             {% set enquete.resultat = {
                 'nom': state_attr(hog.entity_id, 'friendly_name') | default(hog.entity_id),
                 'cpu': hog.state,
                 'ram': states(hog.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')),
@@ -125,7 +124,7 @@ action:
         
         {% else %}
            {# CAS HÔTE (Hog/Heat) #}
-           {% set ns.infos = {
+           {% set enquete.resultat = {
               'nom': 'Serveur Hôte (N100)',
               'cpu': states('sensor.system_monitor_utilisation_du_processeur'),
               'ram': states('sensor.glances_ha_utilisation_de_la_memoire'),
@@ -133,5 +132,5 @@ action:
            } %}
         {% endif %}
         
-        {# On renvoie l'objet final #}
-        {{ ns.infos }}
+        {# On renvoie les conclusions #}
+        {{ enquete.resultat }}
