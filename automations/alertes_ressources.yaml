@@ -75,4 +75,63 @@ trigger:
     for: "00:02:00"
     id: "host_gpu"
 
-action: []
+action:
+  # --------------------------------------------------------------------------
+  # A. ENQUÊTE (Variables) : Qui appelle ?
+  # --------------------------------------------------------------------------
+  - variables:
+      infos_coupable: >
+        {# On initialise un objet vide par défaut #}
+        {% set ns = namespace(infos={'nom': 'Système', 'cpu': 0, 'ram': 0, 'etat': 'Inconnu'}) %}
+        
+        {# 1. SCAN : On récupère tous les candidats via leur CPU #}
+        {% set cpu_sensors = states.sensor 
+           | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
+           | rejectattr('entity_id', 'search', 'node_|qemu_|pc_debian_')
+           | list %}
+
+        {# 2. ANALYSE SELON LE TRIGGER #}
+        {% if trigger.id == 'addon_crash' %}
+          {# CAS CRASH : On cherche quel Add-on est éteint #}
+          {% for cpu in cpu_sensors %}
+            {# Nettoyage du nom #}
+            {% set base = cpu.entity_id.replace('sensor.', '').replace('_cpu_percent', '').replace('_pourcentage_du_processeur', '') %}
+            {% set status_ent = "binary_sensor." ~ base ~ "_running" %}
+            {% set st_exec = "binary_sensor." ~ base ~ "_en_cours_d_execution" %}
+            {% set final_st = status_ent if states(status_ent) != 'unknown' else st_exec %}
+            
+            {% if states(final_st) == 'off' %}
+              {# C'est lui ! On remplit la fiche d'infos #}
+              {% set ns.infos = {
+                'nom': state_attr(final_st, 'friendly_name') | default(base),
+                'cpu': states(cpu.entity_id),
+                'ram': states(cpu.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')),
+                'etat': 'OFF'
+              } %}
+            {% endif %}
+          {% endfor %}
+
+        {% elif trigger.id == 'cpu_overload' %}
+           {# CAS SURCHARGE : On cherche le plus gros consommateur #}
+           {% set hog = cpu_sensors | sort(attribute='state', reverse=True) | first %}
+           {% if hog %}
+             {% set ns.infos = {
+                'nom': state_attr(hog.entity_id, 'friendly_name') | default(hog.entity_id),
+                'cpu': hog.state,
+                'ram': states(hog.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')),
+                'etat': 'SURCHARGE'
+             } %}
+           {% endif %}
+        
+        {% else %}
+           {# CAS HÔTE (Hog/Heat) #}
+           {% set ns.infos = {
+              'nom': 'Serveur Hôte (N100)',
+              'cpu': states('sensor.system_monitor_utilisation_du_processeur'),
+              'ram': states('sensor.glances_ha_utilisation_de_la_memoire'),
+              'etat': 'CRITIQUE'
+           } %}
+        {% endif %}
+        
+        {# On renvoie l'objet final #}
+        {{ ns.infos }}
