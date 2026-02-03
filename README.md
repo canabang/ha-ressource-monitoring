@@ -143,3 +143,11 @@ Bien que le système soit à 90% dynamique, certaines exceptions nécessitent un
 
 *   **Dans la Carte** : Une liste `icons` définit les icônes spécifiques (ex: *Frigate* -> `phu:frigate`) car Home Assistant ne devine pas toujours le bon logo MDI/PHU.
 *   **Dans l'Automatisation** : Une liste `corrections_icones` corrige les "slugs" techniques (ex: `frigate_full_access` -> `frigate`) pour que l'intégration *Home Assistant Brands* trouve le bon logo officiel à afficher dans Discord.
+
+### 5. Monitoring Hôte (Partie Statique)
+Contrairement aux Add-ons, les "Chips" (en haut) pointent vers des entités fixes définies en dur dans le template de la carte. Si vos capteurs ont des noms différents, il faudra modifier ces lignes :
+*   **CPU** : `sensor.system_monitor_utilisation_du_processeur`
+*   **RAM** : `sensor.glances_ha_utilisation_de_la_memoire` (%) et `sensor.glances_ha_memoire_utilisee` (GiB)
+*   **Disque** : `sensor.glances_ha_utilisation_disque_data`
+*   **Température** : `sensor.system_monitor_temperature_du_processeur`
+*   **GPU** : `sensor.frigate_intel_vaapi_gpu_load` (Spécifique N100/N150)
