@@ -127,8 +127,14 @@ Ton script `k_2so_generateur_de_message` renvoie la variable `generated_message`
     response_variable: generated_message
 
   # --------------------------------------------------------------------------
-  # C. NOTIFICATION DISCORD
+  # C. PROPOSITIONS DISCORD (À CHOISIR) 📢
   # --------------------------------------------------------------------------
+  
+  # OPTION 1 : La "Classique" (Propre et efficace)
+  # - Affiche l'icône de l'Add-on (si dispo) ou HA.
+  # - Nom de l'alerte = "Monitor System"
+  # - Texte = Message de K-2SO.
+    
   - action: script.notification_discord
     data:
       nom: "Monitor System"
@@ -139,3 +145,30 @@ Ton script `k_2so_generateur_de_message` renvoie la variable `generated_message`
         {% else %}
           https://brands.home-assistant.io/homeassistant/icon.png
         {% endif %}
+
+  # OPTION 2 : La "Visuelle" (Code couleur dans le titre)
+  # - Change le nom de l'envoyeur pour attirer l'oeil "🚨 ALERTE CRITIQUE" vs "🐌 SURCHARGE".
+  
+  - action: script.notification_discord
+    data:
+      nom: >
+        {% if enquete.resultat.etat == 'OFF' %}
+          🚨 ALERTE CRASH
+        {% else %}
+          ⚠️ ALERTE RESSOURCES
+        {% endif %}
+      description: "{{ generated_message.generated_message.data }}"
+      image_url: "https://brands.home-assistant.io/glances/icon.png"
+
+  # OPTION 3 : La "Mentions" (Ping tout le monde si critique)
+  # - Ajoute @everyone uniquement si c'est un CRASH.
+  
+  - action: script.notification_discord
+    data:
+      nom: "Monitor System"
+      description: >
+        {% if enquete.resultat.etat == 'OFF' %}
+          @everyone 
+        {% endif %}
+        {{ generated_message.generated_message.data }}
+      image_url: ...
