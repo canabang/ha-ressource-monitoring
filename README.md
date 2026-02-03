@@ -28,13 +28,13 @@ Ce système s'appuie sur plusieurs intégrations pour fournir une vision complè
 
 *   **Home Assistant Supervisor** :
     *   *Usage* : Monitoring dynamique des Add-ons.
-    *   *Données* : CPU %, RAM %, Statut (Running/Stopped).
+    *   *Données* : CPU %, RAM %, Statut (Running/Stopped), et le switch pour démarrer/arrêter les add-ons.
 *   **Glances** (Add-on + Intégration) :
     *   *Usage* : Monitoring global de l'Hôte (Chips du Dashboard + Alertes).
     *   *Données* : RAM Réelle, Espace Disque utilisé, Températures fines.
 *   **System Monitor** (Intégration Core) :
     *   *Usage* : Complément pour l'Hôte.
-    *   *Données* : Charge Processeur moyenne (1m/5m/15m), Débit Réseau.
+    *   *Données* : Usage Processeur (%) et Température.
 
 > 💡 **Note** : Les "Chips" en haut de la carte et les alertes "Santé Hôte" dépendent directement de **Glances** et **System Monitor**. Assurez-vous qu'ils sont installés.
 
