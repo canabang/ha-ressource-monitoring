@@ -96,6 +96,3 @@ Une liste de correspondances (`icons`) au début du code permet d'associer des i
 
 ## Remarques
 Les icônes sont attribuées dynamiquement par mots-clés dans le template de la carte. Si un Add-on n'est pas reconnu, il utilisera une icône par défaut ou vous pouvez l'ajouter dans la liste `icons` au début du code YAML.
-
-## Licence
-Ce projet est sous licence MIT. N'hésitez pas à l'adapter et à le partager !
