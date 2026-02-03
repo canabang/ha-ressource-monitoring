@@ -37,7 +37,7 @@ trigger:
   # Déclenche si n'importe quel sensor CPU dépasse 80%
   # --------------------------------------------------------------------------
   - platform: template
-    id: "cpu_overload"
+    id: "surcharge_addon"
     value_template: >
       {{ states.sensor 
          | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
@@ -125,8 +125,8 @@ action:
             {% endif %}
           {% endfor %}
 
-        {% elif trigger.id == 'cpu_overload' %}
-           {# CAS SURCHARGE : On cherche le plus gros consommateur #}
+          {% elif trigger.id == 'surcharge_addon' %}
+            {# CAS SURCHARGE : On cherche le plus gros consommateur #}
            {% set gros_consommateur = liste_capteurs_cpu | sort(attribute='state', reverse=True) | first %}
            {% if gros_consommateur %}
              {% set enquete.resultat = {
