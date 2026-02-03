@@ -5,8 +5,11 @@ Carte de monitoring avancée pour Home Assistant permettant de suivre en temps r
 ![Dashboard Preview](assets/dashboard_preview.gif)
 
 ## Filtres & Tri Dynamique
-### Intégrations Requises
-- **Home Assistant Supervisor** : Essentiel pour fournir les statistiques CPU/RAM des Add-ons et les entités de contrôle.
+### Intégrations (Sources de Données)
+Pour alimenter les jauges et les alertes, le système s'appuie sur :
+- **Home Assistant Supervisor** : *Add-ons* (CPU, RAM, Statut).
+- **Glances** : *Hôte* (RAM réelle, Espace Disque, Température fine).
+- **System Monitor** : *Hôte* (Charge Processeur, Température globale).
 
 ## 🚨 Système d'Alertes Intelligentes
 ## 🚨 Système d'Alertes Intelligentes
