@@ -5,29 +5,10 @@ Carte de monitoring avancée pour Home Assistant permettant de suivre en temps r
 ![Dashboard Preview](assets/dashboard_preview.gif)
 
 ## Filtres & Tri Dynamique
-- **Host Monitoring** : Affichage des constantes vitales (CPU, RAM, Disque, Température) via des Chips.
-- **Top Add-ons** : Classement automatique des services par consommation.
-- **Interactivité** : Double-clic pour démarrer/arrêter un Add-on (avec sécurité contre les erreurs).
-- **Design Pill** : Bords arrondis 33px et transparence totale avec contours fins.
-
-## Pré-requis
-
-### Cartes Lovelace (via [HACS](https://hacs.xyz/))
-- 🍄 [Mushroom Cards](https://github.com/piitaya/lovelace-mushroom)
-- 🗂️ [Auto-entities](https://github.com/thomasloven/lovelace-auto-entities)
-- 🎨 [Card-mod](https://github.com/thomasloven/lovelace-card-mod)
-- 📂 [Fold-entity-row](https://github.com/thomasloven/lovelace-fold-entity-row)
-
-### Packs d'Icônes (via [HACS](https://hacs.xyz/))
-Certaines icônes premium utilisées dans la carte nécessitent l'installation de ces packs :
-- 📦 [Plug-and-Hyve Icons (phu)](https://github.com/Mariusthvdb/phu-icons)
-- 💎 [Material Symbols (m3r, m3rf)](https://github.com/beecho01/material-symbols)
-
 ### Intégrations Requises
-- **Home Assistant Supervisor** : Fournit les statistiques CPU/RAM des Add-ons et les entités de contrôle (Start/Stop).
-- **Glances** : Crucial pour les métriques de l'Hôte dans les Chips (Utilisation RAM en % et GiB, Utilisation Disque).
-- **System Monitor** : Fournit les métriques Host de base (Usage CPU moyen, Température processeur).
+- **Home Assistant Supervisor** : Essentiel pour fournir les statistiques CPU/RAM des Add-ons et les entités de contrôle.
 
+## 🚨 Système d'Alertes Intelligentes
 ## 🚨 Système d'Alertes Intelligentes
 
 Ce projet ne se contente pas d'afficher des jauges, il surveille activement votre système via une **Automatisation Unique** (`alertes_ressources.yaml`).
@@ -75,7 +56,7 @@ Pour une réactivité à 5 secondes (recommandé pour les jauges), créez une se
 
 ## 🧠 Analyse technique (Le "Cerveau" Jinja)
 
-Ce projet repose sur une détection dynamique unique, partagée par la Carte et l'Automatisation.
+Ce projet repose sur une détection dynamique , partagée par la Carte et l'Automatisation.
 
 ### 1. Le Filtrage Intelligent (La base)
 Que ce soit pour afficher les jauges ou détecter un crash, nous utilisons le même filtre Jinja2 pour trouver les Add-ons :
