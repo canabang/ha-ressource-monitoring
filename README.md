@@ -50,9 +50,9 @@ On commence par isoler tous les capteurs CPU des Add-ons en excluant les entité
   | selectattr('state', 'ne', 'unknown')
   | list %}
 ```
-- `selectattr(...)` : On ne garde que les capteurs liés aux processeurs (français et anglais).
-- `rejectattr(...)` : On exclue explicitement les entités de virtualisation (Proxmox/QEMU) qui pollueraient la liste.
-- `unavailable/unknown` : On ignore les services qui ne renvoient pas de données (ex: Add-on arrêté sans capteur actif).
+- **Inclusion** : On capture les entités se terminant par `cpu_percent` (Supervisor anglais) ou `pourcentage_du_processeur` (Supervisor français).
+- **Exclusion** : On élimine les entités parasites liées à la virtualisation (Proxmox, QEMU, nœuds réseau).
+- **Persistance** : Contrairement à d'autres solutions, cette carte conserve les Add-ons arrêtés (`unavailable`) dans la liste pour vous permettre de les relancer d'un simple double-clic.
 
 ### 2. Traitement et Construction des entités
 Pour chaque capteur trouvé, le code "devine" les chemins des autres entités liées (RAM, Switch et Statut).

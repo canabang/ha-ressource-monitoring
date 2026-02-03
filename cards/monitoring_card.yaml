@@ -67,12 +67,9 @@ cards:
           'Speech-to-Phrase': 'mdi:waveform'
         } %}
 
-        {% set add_ons = namespace(items=[]) %}
         {% set sensors = states.sensor 
           | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
           | rejectattr('entity_id', 'search', 'node_|qemu_|pc_debian_')
-          | selectattr('state', 'ne', 'unavailable')
-          | selectattr('state', 'ne', 'unknown')
           | list %}
 
         {% for s in sensors %}
@@ -113,7 +110,7 @@ cards:
             "type": "custom:mushroom-template-card",
             "entity": item.sw_ent,
             "primary": item.name,
-            "secondary": "{% if states('" ~ item.st_ent ~ "') == 'off' %} Inactif {% else %} CPU: {{ states('" ~ item.cpu_ent ~ "') }}% | RAM: {{ states('" ~ item.ram_ent ~ "') }}% {% endif %}",
+            "secondary": "{% if states('" ~ item.st_ent ~ "') == 'off' %} Inactif {% else %} CPU: {{ states('" ~ item.cpu_ent ~ "') | float(0) }}% | RAM: {{ states('" ~ item.ram_ent ~ "') | float(0) }}% {% endif %}",
             "icon": icon_ns.found,
             "icon_color": "{% set cpu = states('" ~ item.cpu_ent ~ "') | float(0) %} {{ 'blue' if cpu < 25 else 'orange' if cpu < 60 else 'red' }}",
             "badge_icon": "{% if states('" ~ item.st_ent ~ "') == 'on' %} mdi:play {% elif states('" ~ item.st_ent ~ "') == 'off' %} mdi:stop {% else %} none {% endif %}",
