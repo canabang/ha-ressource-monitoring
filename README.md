@@ -137,3 +137,9 @@ L'automatisation [`alertes_ressources.yaml`](automations/alertes_ressources.yaml
 *   **Trigger "Crash"** : Si le sensor CPU existe MAIS que le statut est OFF -> Alerte.
 *   **Trigger "Surcharge"** : Si le sensor CPU dépasse 80% pendant 5 min -> Alerte.
 *   **Mapping Intelligent** : Un dictionnaire interne corrige les noms exotiques (`frigate_full_access` -> `frigate`) pour afficher la bonne icône dans la notification.
+
+### 4. La Gestion des Exceptions (Le "Fixe")
+Bien que le système soit à 90% dynamique, certaines exceptions nécessitent un mapping manuel pour un affichage parfait :
+
+*   **Dans la Carte** : Une liste `icons` définit les icônes spécifiques (ex: *Frigate* -> `phu:frigate`) car Home Assistant ne devine pas toujours le bon logo MDI/PHU.
+*   **Dans l'Automatisation** : Une liste `corrections_icones` corrige les "slugs" techniques (ex: `frigate_full_access` -> `frigate`) pour que l'intégration *Home Assistant Brands* trouve le bon logo officiel à afficher dans Discord.
