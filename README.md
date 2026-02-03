@@ -86,9 +86,18 @@ Le rendu est optimisé pour Discord avec :
 
 ### 2b. Alternative : Le Blueprint (Recommandé pour les autres utilisateurs)
 Si vous ne souhaitez pas utiliser l'IA ou modifier du code yaml, utilisez le Blueprint :
-1.  Copiez [`blueprints/alertes_ressources.yaml`](blueprints/alertes_ressources.yaml) dans `/config/blueprints/automation/perso/`.
-2.  Créez une automatisation via **Paramètres** > **Utiliser un plan** > **"Système • Surveillance & Alertes 🛡️"**.
-3.  Configurez simplement vos seuils et votre notification !
+
+1.  **Installation du fichier** :
+    *   Assurez-vous que le dossier `/config/blueprints/automation/perso/` existe.
+    *   Copiez le fichier [`blueprints/alertes_ressources.yaml`](blueprints/alertes_ressources.yaml) dans ce dossier.
+2.  **Prise en compte** (Important ⚠️) :
+    *   Allez dans **Outils de développement** > **YAML**.
+    *   Cliquez sur **Automatisations** pour recharger la liste des plans.
+3.  **Création de l'automatisation** :
+    *   Allez dans **Paramètres** > **Automatisations** > **Créer** > **Utiliser un plan**.
+    *   Recherchez et sélectionnez **"Système • Surveillance & Alertes 🛡️"**.
+4.  **Configuration** :
+    *   Réglez simplement vos seuils et choisissez votre appareil de notification !
 
 ### 3. (Optionnel) Le Rafraîchissement Turbo
 Pour une réactivité à 5 secondes (recommandé pour les jauges), créez une seconde automatisation avec le contenu de [`automations/turbo_refresh.yaml`](automations/turbo_refresh.yaml).
