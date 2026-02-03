@@ -57,70 +57,47 @@ Le rendu est optimisé pour Discord avec :
 
 ## 🛠️ Installation
 
-1.  Copiez le dossier `www` pour les dépendances (si nécessaire).
-2.  Ajoutez le contenu de `packages` ou copiez les fichiers YAML.
-yaml](cards/monitoring_card.yaml).
+### 1. La Carte (Frontend)
+1.  Installez les cartes requises via HACS (Mushroom, Auto-entities, etc.).
+2.  Créez une nouvelle carte **Manuel** dans votre tableau de bord.
+3.  Copiez-collez l'intégralité du contenu du fichier [`cards/monitoring_card.yaml`](cards/monitoring_card.yaml).
 
-### 2. Le Rafraîchissement Turbo (Backend)
-Pour une réactivité à 5 secondes (recommandé si vos capteurs sont exclus du recorder), importez l'automation [turbo_refresh.yaml](automations/turbo_refresh.yaml).
+### 2. L'Automatisation (Backend)
+1.  Allez dans **Paramètres** > **Automatisations et Scènes** > **Créer une automatisation**.
+2.  Passez en mode **YAML** (3 petits points en haut à droite).
+3.  Copiez-collez le contenu du fichier [`automations/alertes_ressources.yaml`](automations/alertes_ressources.yaml).
+4.  Sauvegardez.
 
-## Analyse détaillée du code
+### 3. (Optionnel) Le Rafraîchissement Turbo
+Pour une réactivité à 5 secondes (recommandé pour les jauges), créez une seconde automatisation avec le contenu de [`automations/turbo_refresh.yaml`](automations/turbo_refresh.yaml).
 
-Le code de la carte (YAML) utilise le moteur de template Jinja2 de Home Assistant pour automatiser la gestion des entités. Voici le découpage par étapes :
+---
 
-### 1. Collecte et Filtrage initial
-On commence par isoler tous les capteurs CPU des Add-ons en excluant les entités parasites.
+## 🧠 Analyse technique (Le "Cerveau" Jinja)
+
+Ce projet repose sur une détection dynamique unique, partagée par la Carte et l'Automatisation.
+
+### 1. Le Filtrage Intelligent (La base)
+Que ce soit pour afficher les jauges ou détecter un crash, nous utilisons le même filtre Jinja2 pour trouver les Add-ons :
+
 ```jinja
 {% set sensors = states.sensor 
   | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
   | rejectattr('entity_id', 'search', 'node_|qemu_|pc_debian_')
-  | selectattr('state', 'ne', 'unavailable')
-  | selectattr('state', 'ne', 'unknown')
   | list %}
 ```
-- **Inclusion** : On capture les entités se terminant par `cpu_percent` (Supervisor anglais) ou `pourcentage_du_processeur` (Supervisor français).
-- **Exclusion** : On élimine les entités parasites liées à la virtualisation (Proxmox, QEMU, nœuds réseau).
-- **Persistance** : Contrairement à d'autres solutions, cette carte conserve les Add-ons arrêtés (`unavailable`) dans la liste pour vous permettre de les relancer d'un simple double-clic.
+*   **Agnostique** : Fonctionne que votre système soit en Anglais (`cpu_percent`) ou Français (`pourcentage...`).
+*   **Propre** : Filtre les processus internes (QEMU, Node, etc.).
+*   **Robuste** : Si un Add-on change de nom, il suffit de "Recréer les identifiants" dans Home Assistant pour qu'il soit détecté.
 
-### 2. Reconstruction intelligente des entités
-Pour chaque capteur trouvé, le code "devine" les chemins des autres entités (RAM, Switch et Statut) en essayant les suffixes courants (`_running` ou `_en_cours_d_execution`).
-```jinja
-{%- set st_run = "binary_sensor." ~ base ~ "_running" -%}
-{%- set st_exec = "binary_sensor." ~ base ~ "_en_cours_d_execution" -%}
-{%- set status_ent = st_run if states(st_run) != 'unknown' else st_exec -%}
-```
-C'est ce qui garantit l'affichage du badge Play/Stop pour tous les services, incluant VS Code ou File Editor.
+### 2. Logique de la Carte (Frontend)
+La carte [`monitoring_card.yaml`](cards/monitoring_card.yaml) utilise ce filtre pour :
+1.  **Reconstruire les entités** : Deviner le `binary_sensor` (Statut) à partir du sensor CPU.
+2.  **Trier par urgence** : `CPU > RAM` ? On affiche le plus critique.
+3.  **Sticky Bottom** : Les Add-ons éteints (`OFF`) sont forcés en bas de liste.
 
-### 3. Calcul de Priorité et Tri (Sticky-Bottom pour les inactifs)
-Pour savoir quel Add-on doit figurer dans le **Top 5**, on calcule la valeur maximale entre son CPU et sa RAM. Si l'Add-on est détecté comme arrêté (`off`), on lui donne une priorité de `-1` pour le forcer à descendre en bas de liste.
-```jinja
-{%- set priority = -1 if states(status_ent) == 'off' else (cpu if cpu > ram else ram) -%}
-```
-Puis on trie la liste finale par cette `priority`.
-```jinja
-{% set sorted_items = add_ons.items | sort(attribute='priority', reverse=true) %}
-```
-
-### 4. Répartition Top 5 et Reste
-On divise la liste en deux groupes pour garder un dashboard propre.
-```jinja
-{% set final_cards = namespace(top=[], rest=[]) %}
-{% for item in sorted_items %}
-  {# ... génération de la carte Mushroom ... #}
-  {% if loop.index <= 5 %}
-    {% set final_cards.top = final_cards.top + [card] %}
-  {% else %}
-    {% set final_cards.rest = final_cards.rest + [card] %}
-  {% endif %}
-{% endfor %}
-```
-
-### 5. Assemblage final
-On fusionne le Top 5 permanent avec un bloc `custom:fold-entity-row` (en bas) qui contient tout le reste de la liste, camouflé derrière un menu déroulant.
-L'entité `sw_ent` est reconstruite dynamiquement pour chaque Add-on à partir de son nom de capteur CPU.
-
-### 4. Attribution Automatique des Icônes
-Une liste de correspondances (`icons`) au début du code permet d'associer des icônes spécifiques aux noms des Add-ons (ex: *Frigate*, *ESPHome*, etc.). Si un Add-on n'est pas dans la liste, une icône par défaut est utilisée.
-
-## Remarques
-Les icônes sont attribuées dynamiquement par mots-clés dans le template de la carte. Si un Add-on n'est pas reconnu, il utilisera une icône par défaut ou vous pouvez l'ajouter dans la liste `icons` au début du code YAML.
+### 3. Logique de l'Automatisation (Backend)
+L'automatisation [`alertes_ressources.yaml`](automations/alertes_ressources.yaml) reprend exactement le même principe pour ses triggers :
+*   **Trigger "Crash"** : Si le sensor CPU existe MAIS que le statut est OFF -> Alerte.
+*   **Trigger "Surcharge"** : Si le sensor CPU dépasse 80% pendant 5 min -> Alerte.
+*   **Mapping Intelligent** : Un dictionnaire interne corrige les noms exotiques (`frigate_full_access` -> `frigate`) pour afficher la bonne icône dans la notification.
