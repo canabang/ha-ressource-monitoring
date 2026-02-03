@@ -1,0 +1,140 @@
+alias: "System - Monitor & Alert (K-2SO)"
+description: "Surveillance dynamique des Add-ons (basée sur CPU) et de l'hôte. K-2SO gère les notifications Discord."
+trigger:
+  # --------------------------------------------------------------------------
+  # 1. ADD-ON CRASH SCANNER (Dynamique)
+  # Déclenche si un Add-on (identifié par son CPU) a un statut OFF
+  # --------------------------------------------------------------------------
+  - platform: template
+    id: "addon_crash"
+    value_template: >
+      {# On récupère tous les sensors CPU #}
+      {% set cpu_sensors = states.sensor 
+        | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
+        | rejectattr('entity_id', 'search', 'node_|qemu_|pc_debian_')
+        | list %}
+      
+      {% set ns = namespace(crashed=[]) %}
+      {% for cpu in cpu_sensors %}
+        {# On devine le nom de base #}
+        {% set base = cpu.entity_id.replace('sensor.', '').replace('_cpu_percent', '').replace('_pourcentage_du_processeur', '') %}
+        {# On cherche le binary_sensor associé (FR ou EN) #}
+        {% set st_run = "binary_sensor." ~ base ~ "_running" %}
+        {% set st_exec = "binary_sensor." ~ base ~ "_en_cours_d_execution" %}
+        {% set status_ent = st_run if states(st_run) != 'unknown' else st_exec %}
+        
+        {# Si l'entité de statut existe ET est OFF, c'est un crash #}
+        {% if states(status_ent) == 'off' %}
+          {% set ns.crashed = ns.crashed + [1] %}
+        {% endif %}
+      {% endfor %}
+      {{ ns.crashed | count > 0 }}
+    for: "00:01:00"
+
+  # --------------------------------------------------------------------------
+  # 2. ADD-ON CPU HOG SCANNER (Dynamique)
+  # Déclenche si n'importe quel sensor CPU dépasse 80%
+  # --------------------------------------------------------------------------
+  - platform: template
+    id: "cpu_overload"
+    value_template: >
+      {{ states.sensor 
+         | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
+         | rejectattr('entity_id', 'search', 'node_|qemu_|pc_debian_')
+         | map(attribute='state') 
+         | map('float', 0) 
+         | select('gt', 80) 
+         | list | count > 0 }}
+    for: "00:05:00"
+
+  # --------------------------------------------------------------------------
+  # 3. HOST HEALTH (Chips)
+  # --------------------------------------------------------------------------
+  - platform: numeric_state
+    entity_id: sensor.system_monitor_temperature_du_processeur
+    above: 75
+    for: "00:02:00"
+    id: "host_heat"
+
+  - platform: numeric_state
+    entity_id: sensor.glances_ha_utilisation_de_la_memoire
+    above: 90
+    for: "00:05:00"
+    id: "host_ram"
+
+action:
+  # --------------------------------------------------------------------------
+  # A. IDENTIFICATION DU COUPABLE (Pour le message)
+  # --------------------------------------------------------------------------
+  - variables:
+      culprit_name: >
+        {% if trigger.id == 'addon_crash' %}
+          {# On refait le scan pour trouver le NOM du coupable #}
+          {% set cpu_sensors = states.sensor | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur') | rejectattr('entity_id', 'search', 'node_|qemu_|pc_debian_') | list %}
+          {% set ns = namespace(found='Un Add-on inconnu') %}
+          {% for cpu in cpu_sensors %}
+            {% set base = cpu.entity_id.replace('sensor.', '').replace('_cpu_percent', '').replace('_pourcentage_du_processeur', '') %}
+            {% set st_run = "binary_sensor." ~ base ~ "_running" %}
+            {% set st_exec = "binary_sensor." ~ base ~ "_en_cours_d_execution" %}
+            {% set status_ent = st_run if states(st_run) != 'unknown' else st_exec %}
+            {% if states(status_ent) == 'off' %}
+              {% set ns.found = state_attr(status_ent, 'friendly_name') | default(base) %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.found }}
+        {% elif trigger.id == 'cpu_overload' %}
+           {# On cherche celui qui a le plus gros CPU #}
+           {% set hogs = states.sensor | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur') | sort(attribute='state', reverse=True) | list %}
+           {{ hogs[0].attributes.friendly_name if hogs else 'Système' }}
+        {% else %}
+           Serveur Home Assistant
+        {% endif %}
+
+  # --------------------------------------------------------------------------
+  # B. BRAIN : K-2SO GÉNÈRE LE MESSAGE
+  # --------------------------------------------------------------------------
+  - action: script.k_2so_generateur_de_message
+    data:
+      mission: >
+        {% if trigger.id == 'addon_crash' %}
+          Panne Critique : {{ culprit_name }} est hors ligne.
+        {% elif trigger.id == 'cpu_overload' %}
+          Surcharge CPU : {{ culprit_name }} monopolise les ressources.
+        {% elif trigger.id == 'host_heat' %}
+          Surchauffe Matérielle : Le processeur brûle.
+        {% elif trigger.id == 'host_ram' %}
+          Saturation Mémoire : RAM critique.
+        {% endif %}
+      details: "Alerte détectée à {{ now().strftime('%H:%M') }}"
+      consigne: "Sois technique et cynique. Suggère l'incompétence de l'opérateur."
+    response_variable: k2so_output
+
+  # --------------------------------------------------------------------------
+  # C. VOICE : NOTIFICATION DISCORD
+  # --------------------------------------------------------------------------
+  - action: script.notification_discord
+    data:
+      nom: "System Monitor"
+      description: "{{ k2so_output.generated_message.data }}"
+      image_url: >
+        {% if trigger.id == 'addon_crash' %}
+          https://brands.home-assistant.io/hassio/icon.png
+        {% else %}
+          https://brands.home-assistant.io/homeassistant/icon.png
+        {% endif %}
+
+  # --------------------------------------------------------------------------
+  # D. DISPLAY : AWTRIX NOTIFY
+  # --------------------------------------------------------------------------
+  - action: script.awtrix_dynamique_customapp_and_notify
+    data:
+      message: >
+        {% if trigger.id == 'addon_crash' %}
+          {{ culprit_name }} DOWN
+        {% else %}
+          ALERT {{ trigger.id | upper | replace('_', ' ') }}
+        {% endif %}
+      icone: "alert"
+      color: "#FF0000"
+      duree: 20
+      rainbow: false
