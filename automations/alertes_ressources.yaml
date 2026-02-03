@@ -81,7 +81,7 @@ trigger:
   - variables:
       infos_coupable: >
         {# On initialise l'enquête avec des valeurs par défaut #}
-        {% set enquete = namespace(resultat={'nom': 'Système', 'slug': 'homeassistant', 'cpu': 0, 'ram': 0, 'disk': 0, 'etat': 'Inconnu'}) %}
+        {% set enquete = namespace(resultat={'nom': 'Système', 'cpu': 0, 'ram': 0, 'disk': 0, 'etat': 'Inconnu'}) %}
         
         {# 1. SCAN : On récupère tous les candidats via leur CPU #}
         {% set liste_capteurs_cpu = states.sensor 
@@ -107,7 +107,6 @@ trigger:
               {# C'est lui ! On clôture l'enquête #}
               {% set enquete.resultat = {
                 'nom': state_attr(entite_statut_reelle, 'friendly_name') | default(nom_simplifie),
-                'slug': nom_simplifie,
                 'cpu': states(capteur_cpu.entity_id),
                 'ram': states(capteur_cpu.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')),
                 'etat': 'OFF'
@@ -121,7 +120,6 @@ trigger:
            {% if gros_consommateur %}
              {% set enquete.resultat = {
                 'nom': state_attr(gros_consommateur.entity_id, 'friendly_name') | default(gros_consommateur.entity_id),
-                'slug': gros_consommateur.entity_id.replace('sensor.', '').replace('_cpu_percent', '').replace('_pourcentage_du_processeur', ''),
                 'cpu': gros_consommateur.state,
                 'ram': states(gros_consommateur.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')),
                 'etat': 'SURCHARGE'
@@ -134,7 +132,6 @@ trigger:
            {# CAS DISQUE #}
            {% set enquete.resultat = {
               'nom': 'Stockage Système',
-              'slug': 'homeassistant',
               'cpu': states('sensor.system_monitor_utilisation_du_processeur'),
               'ram': states('sensor.glances_ha_utilisation_de_la_memoire'),
               'disk': states('sensor.glances_ha_utilisation_disque_data'),
@@ -145,7 +142,6 @@ trigger:
            {# CAS GPU #}
            {% set enquete.resultat = {
               'nom': 'Puce Graphique (Intel)',
-              'slug': 'frigate',
               'cpu': states('sensor.frigate_intel_vaapi_gpu_load'),
               'ram': states('sensor.glances_ha_utilisation_de_la_memoire'),
               'disk': states('sensor.glances_ha_utilisation_disque_data'),
@@ -156,7 +152,6 @@ trigger:
            {# CAS CASSE GÉNÉRALE (Hog/Heat/Ram) #}
            {% set enquete.resultat = {
               'nom': 'Serveur Hôte (N100)',
-              'slug': 'homeassistant',
               'cpu': states('sensor.system_monitor_utilisation_du_processeur'),
               'ram': states('sensor.glances_ha_utilisation_de_la_memoire'),
               'disk': states('sensor.glances_ha_utilisation_disque_data'),
@@ -192,37 +187,3 @@ trigger:
       
       consigne: "Sois technique, sarcastique et bref."
     response_variable: generated_message
-
-  # --------------------------------------------------------------------------
-  # C. NOTIFICATION DISCORD (Style "Visuel" avec Icône dynamique) 🚨
-  # --------------------------------------------------------------------------
-  - action: script.notification_discord
-    data:
-      nom: >
-        {% if enquete.resultat.etat == 'OFF' %}
-          🚨 CRASH : {{ enquete.resultat.nom }}
-        {% else %}
-          ⚠️ {{ enquete.resultat.etat }}
-        {% endif %}
-      description: "{{ generated_message.data }}"
-      image_url: "https://brands.home-assistant.io/{{ enquete.resultat.slug }}/icon.png"
-
-  # --------------------------------------------------------------------------
-  # D. NOTIFICATION AWTRIX (Flash Court et Concis) ⌚
-  # --------------------------------------------------------------------------
-  - action: script.awtrix_dynamique_customapp_and_notify
-    data:
-      message: >
-        {% if enquete.resultat.etat == 'OFF' %}
-          {{ enquete.resultat.slug | upper | truncate(10) }} DOWN
-        {% else %}
-          ALERTE {{ enquete.resultat.slug | upper | truncate(10) }}
-        {% endif %}
-      icon: "alert-circle"
-      duration: 10
-      color: >
-        {% if enquete.resultat.etat == 'OFF' %}
-          [255, 0, 0]
-        {% else %}
-          [255, 165, 0]
-        {% endif %}
