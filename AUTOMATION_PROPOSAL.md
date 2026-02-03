@@ -171,4 +171,23 @@ Ton script `k_2so_generateur_de_message` renvoie la variable `generated_message`
           @everyone 
         {% endif %}
         {{ generated_message.generated_message.data }}
-      image_url: ...
+  # --------------------------------------------------------------------------
+  # PROPOSITION FINALE (HYBRIDE) 🏆
+  # Titre de l'Option 2 ("🚨 CRASH") + Icônes Dynamiques
+  # --------------------------------------------------------------------------
+  - action: script.notification_discord
+    data:
+      # Titre Visuel (Option 2)
+      nom: >
+        {% if enquete.resultat.etat == 'OFF' %}
+          🚨 CRASH : {{ enquete.resultat.nom }}
+        {% else %}
+          ⚠️ {{ enquete.resultat.etat }}
+        {% endif %}
+      
+      # Le message de K-2SO
+      description: "{{ generated_message.data }}"
+      
+      # Icône Dynamique (Offielle Home Assistant Brands)
+      # On utilise la variable 'identifiant_icone' (ex: 'frigate', 'logbook')
+      image_url: "https://brands.home-assistant.io/{{ enquete.resultat.identifiant_icone }}/icon.png"
