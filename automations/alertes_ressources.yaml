@@ -172,9 +172,8 @@ action:
   # --------------------------------------------------------------------------
   - action: script.k_2so_generateur_de_message
     data:
-      mission: >
-        {% set info = infos_coupable %}
-        {% if info.etat == 'OFF' %}
+      mission: |
+        {% set info = infos_coupable %} {% if info.etat == 'OFF' %}
           Panne Critique : {{ info.nom }} ne répond plus.
         {% elif 'SURCHARGE' in info.etat %}
           Surcharge Système : {{ info.nom }} souffre.
@@ -183,16 +182,11 @@ action:
         {% else %}
           Alerte Ressources : {{ info.nom }} est en zone rouge.
         {% endif %}
-      
       details: >
-        - CPU : {{ infos_coupable.cpu }}%
-        - RAM : {{ infos_coupable.ram }}%
-        {% if infos_coupable.disk != 0 %}
-        - Disque : {{ infos_coupable.disk }}%
-        {% endif %}
-        - État : {{ infos_coupable.etat }}
-      
-      consigne: "Sois technique, sarcastique et bref."
+        - CPU : {{ infos_coupable.cpu }}% - RAM : {{ infos_coupable.ram }}% {% if
+        infos_coupable.disk != 0 %} - Disque : {{ infos_coupable.disk }}% {% endif
+        %} - État : {{ infos_coupable.etat }}
+      consigne: Sois technique, sarcastique et bref, utilises les détails dans ta reponse.
     response_variable: generated_message
 
   # --------------------------------------------------------------------------
