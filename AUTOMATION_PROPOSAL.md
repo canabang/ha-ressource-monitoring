@@ -14,26 +14,29 @@ On utilisera ton script `k2so` existant pour générer le message.
 
 ## 3. Les Scénarios Proposés
 
-### 3. Les Scénarios & Déclencheurs (Détail)
+### 3. Les Scénarios & Déclencheurs (Strictement Carte)
 
-#### A. "The Crash" (Services Critiques) 🚨
-Si un service essentiel s'arrête (état `off` ou `unavailable` pendant 1 min).
-*   `binary_sensor.frigate_running` (Frigate)
-*   `binary_sensor.zigbee2mqtt_running` (Zigbee2MQTT - *à confirmer si présent*)
-*   `binary_sensor.mosquitto_broker_running` (MQTT)
-*   `binary_sensor.matter_server_running` (Matter)
+#### A. "The Crash" (Services) 🚨
+Si un service affiché sur la carte s'arrête (état `off` pendant 1 min).
+*   `binary_sensor.frigate_running`
+*   `binary_sensor.music_assistant_running`
+*   `binary_sensor.matter_server_running`
+*   `binary_sensor.esphome_running`
+*   `binary_sensor.speech_to_phrase_running`
+*   `binary_sensor.porcupine_running`
+*   `binary_sensor.piper_running`
+*   `binary_sensor.beszel_agent_running`
 
 #### B. "The Hog" (Surcharge CPU) 🐌
-Si un service consomme anormalement pendant plus de 5 minutes.
-*   `sensor.frigate_cpu_percent` > 80%
-*   `sensor.glances_cpu_percent` > 50%
-*   `sensor.home_assistant_core_cpu_percent` > 40%
+Si un consommateur majeur de la carte dépasse 80% CPU (5 min).
+*   `sensor.frigate_cpu_percent`
+*   `sensor.music_assistant_cpu_percent`
+*   `sensor.glances_cpu_percent`
+*   `sensor.home_assistant_core_cpu_percent`
 
 #### C. "The Heater" (Santé du N100) 🔥
-Si le matériel est en souffrance.
 *   `sensor.system_monitor_temperature_du_processeur` > 75°C
-*   `sensor.system_monitor_utilisation_du_processeur` > 90% (Global)
-*   `sensor.glances_ha_utilisation_de_la_memoire` > 90% (RAM saturée)
+*   `sensor.glances_ha_utilisation_de_la_memoire` > 90%
 
 ## 4. Structure Technique (Le Chaînage)
 Ton script `k_2so_generateur_de_message` renvoie la variable `generated_message`.
@@ -44,22 +47,29 @@ alias: "System - Monitor & Alert"
 trigger:
   # --- CRASH DETECTORS ---
   - platform: state
-    entity_id: binary_sensor.frigate_running
+    entity_id: 
+      - binary_sensor.frigate_running
+      - binary_sensor.music_assistant_running
+      - binary_sensor.matter_server_running
+      - binary_sensor.esphome_running
+      - binary_sensor.speech_to_phrase_running
+      - binary_sensor.porcupine_running
+      - binary_sensor.piper_running
+      - binary_sensor.beszel_agent_running
     to: "off"
     for: "00:01:00"
-    id: "crash_frigate"
-  - platform: state
-    entity_id: binary_sensor.matter_server_running
-    to: "off"
-    for: "00:01:00"
-    id: "crash_matter"
+    id: "addon_crash"
     
   # --- RESOURCE HOGS ---
   - platform: numeric_state
-    entity_id: sensor.frigate_cpu_percent
+    entity_id: 
+      - sensor.frigate_cpu_percent
+      - sensor.music_assistant_cpu_percent
+      - sensor.glances_cpu_percent
+      - sensor.home_assistant_core_cpu_percent
     above: 80
     for: "00:05:00"
-    id: "cpu_frigate"
+    id: "cpu_overload"
 
 action:
   # 1. BRAIN : K-2SO génère le message
