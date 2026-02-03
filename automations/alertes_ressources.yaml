@@ -62,6 +62,18 @@ trigger:
     for: "00:05:00"
     id: "host_ram"
 
+  - platform: numeric_state
+    entity_id: sensor.glances_ha_utilisation_disque_data
+    above: 90
+    for: "00:05:00"
+    id: "host_disk"
+
+  - platform: numeric_state
+    entity_id: sensor.frigate_intel_vaapi_gpu_load
+    above: 90
+    for: "00:02:00"
+    id: "host_gpu"
+
 action:
   # --------------------------------------------------------------------------
   # A. IDENTIFICATION DU COUPABLE (Pour le message)
@@ -104,6 +116,10 @@ action:
           Surchauffe Matérielle : Le processeur brûle.
         {% elif trigger.id == 'host_ram' %}
           Saturation Mémoire : RAM critique.
+        {% elif trigger.id == 'host_disk' %}
+          Saturation Disque : Espace disque critique.
+        {% elif trigger.id == 'host_gpu' %}
+          Surcharge GPU : Frigate étouffe le chipset graphique.
         {% endif %}
       details: "Alerte détectée à {{ now().strftime('%H:%M') }}"
       consigne: "Sois technique et cynique. Suggère l'incompétence de l'opérateur."
