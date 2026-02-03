@@ -94,23 +94,21 @@ action:
         {% if trigger.id == 'addon_crash' %}
           {# CAS CRASH : On cherche quel Add-on est éteint #}
           
-          {# Mapping manuel pour les cas particuliers (Add-on -> Slug Brand) #}
-          {% set icon_mapping = {
+          {# LISTE EXPLICITE DES CORRECTIONS D'ICÔNES (Nom d'Entity -> Identifiant Brand) #}
+          {% set corrections_icones = {
             'frigate_full_access': 'frigate',
             'studio_code_server': 'hassio',
-            'ssh_web_terminal': 'hassio'
+            'ssh_web_terminal': 'hassio',
+            'glances': 'glances'
           } %}
 
           {% for capteur_cpu in liste_capteurs_cpu %}
-            {# a. Nettoyage du nom pour trouver la racine #}
-            {% set nom_simplifie = capteur_cpu.entity_id.replace('sensor.', '').replace('_cpu_percent', '').replace('_pourcentage_du_processeur', '') %}
+            {# a. On extrait l'identifiant brut (ex: frigate_full_access) #}
+            {% set id_brut = capteur_cpu.entity_id.replace('sensor.', '').replace('_cpu_percent', '').replace('_pourcentage_du_processeur', '') %}
             
-            {# b. On applique le mapping si nécessaire #}
-            {% set slug_icone = icon_mapping.get(nom_simplifie, nom_simplifie) %}
-            
-            {# c. On construit les noms potentiels du binary_sensor #}
-            {% set entite_running_anglais = "binary_sensor." ~ nom_simplifie ~ "_running" %}
-            {% set entite_running_francais = "binary_sensor." ~ nom_simplifie ~ "_en_cours_d_execution" %}
+            {# b. On construit les noms potentiels du binary_sensor #}
+            {% set entite_running_anglais = "binary_sensor." ~ id_brut ~ "_running" %}
+            {% set entite_running_francais = "binary_sensor." ~ id_brut ~ "_en_cours_d_execution" %}
             
             {# c. On garde celui qui existe vraiment #}
             {% set entite_statut_reelle = entite_running_anglais if states(entite_running_anglais) != 'unknown' else entite_running_francais %}
@@ -118,8 +116,8 @@ action:
             {% if states(entite_statut_reelle) == 'off' %}
               {# C'est lui ! On clôture l'enquête #}
               {% set enquete.resultat = {
-                'nom': state_attr(entite_statut_reelle, 'friendly_name') | default(nom_simplifie),
-                'identifiant_icone': slug_icone,
+                'nom': state_attr(entite_statut_reelle, 'friendly_name') | default(id_brut),
+                'identifiant_icone': corrections_icones.get(id_brut, id_brut),
                 'cpu': states(capteur_cpu.entity_id) | float(0),
                 'ram': states(capteur_cpu.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')) | float(0),
                 'etat': 'OFF'
