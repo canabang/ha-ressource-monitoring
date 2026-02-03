@@ -8,6 +8,7 @@ trigger:
   # --------------------------------------------------------------------------
   - platform: template
     id: "addon_crash"
+    alias: "Crash Add-on"
     value_template: >
       {# On récupère tous les sensors CPU #}
       {% set cpu_sensors = states.sensor 
@@ -37,7 +38,8 @@ trigger:
   # Déclenche si n'importe quel sensor CPU dépasse 80%
   # --------------------------------------------------------------------------
   - platform: template
-    id: "surcharge_addon"
+    id: "cpu_overload"
+    alias: "Surcharge Add-on"
     value_template: >
       {{ states.sensor 
          | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
@@ -56,24 +58,28 @@ trigger:
     above: 75
     for: "00:02:00"
     id: "host_heat"
+    alias: "Surchauffe Hôte"
 
   - platform: numeric_state
     entity_id: sensor.glances_ha_utilisation_de_la_memoire
     above: 90
     for: "00:05:00"
     id: "host_ram"
+    alias: "Surcharge RAM Hôte"
 
   - platform: numeric_state
     entity_id: sensor.glances_ha_utilisation_disque_data
     above: 90
     for: "00:05:00"
     id: "host_disk"
+    alias: "Disque Plein"
 
   - platform: numeric_state
     entity_id: sensor.frigate_intel_vaapi_gpu_load
     above: 90
     for: "00:02:00"
     id: "host_gpu"
+    alias: "Surcharge GPU"
 
   # --------------------------------------------------------------------------
   # A. ENQUÊTE (Variables) : Qui appelle ?
@@ -125,7 +131,7 @@ action:
             {% endif %}
           {% endfor %}
 
-          {% elif trigger.id == 'surcharge_addon' %}
+          {% elif trigger.id == 'cpu_overload' %}
             {# CAS SURCHARGE : On cherche le plus gros consommateur #}
            {% set gros_consommateur = liste_capteurs_cpu | sort(attribute='state', reverse=True) | first %}
            {% if gros_consommateur %}
