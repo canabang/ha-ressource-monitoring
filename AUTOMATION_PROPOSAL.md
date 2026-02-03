@@ -98,9 +98,28 @@ Une fois l'alerte levée, qu'est-ce qu'on fait ?
 
 Quelle profondeur d'automatisation veux-tu ? (Juste prévenir ? Ou tenter de réparer ?)
 
-## 4. Structure Technique (Le Chaînage)
-Ton script `k_2so_generateur_de_message` renvoie la variable `generated_message`.
-
-**Exemple de code YAML projeté :**
-```yaml
-alias: "System - Monitor & Alert"
+  # --------------------------------------------------------------------------
+  # B. BRAIN : K-2SO GÉNÈRE LE MESSAGE 🧠
+  # --------------------------------------------------------------------------
+  - action: script.k_2so_generateur_de_message
+    data:
+      mission: >
+        {% set info = enquete.resultat %}
+        {% if info.etat == 'OFF' %}
+          Panne Critique : {{ info.nom }} ne répond plus.
+        {% elif 'SURCHARGE' in info.etat %}
+          Surcharge Système : {{ info.nom }} est en souffrance.
+        {% elif 'DISQUE' in info.etat %}
+          Espace Disque Critique : {{ info.nom }} est saturé.
+        {% else %}
+          Alerte Ressources : {{ info.nom }} est en zone rouge.
+        {% endif %}
+      
+      details: >
+        Analyse technique à {{ now().strftime('%H:%M') }} :
+        - CPU : {{ enquete.resultat.cpu }}%
+        - RAM : {{ enquete.resultat.ram }}%
+        - État : {{ enquete.resultat.etat }}
+      
+      consigne: "Sois technique, sarcastique et bref. Moque-toi de la stabilité du système."
+    response_variable: k2so_output
