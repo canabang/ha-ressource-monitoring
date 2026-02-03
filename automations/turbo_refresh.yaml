@@ -1,0 +1,27 @@
+alias: "🏠 System - Turbo Monitoring Refresh 5s"
+description: "Force la mise à jour des entités de ressources toutes les 5 secondes."
+trigger:
+  - platform: time_pattern
+    seconds: "/5"
+action:
+  - service: homeassistant.update_entity
+    target:
+      entity_id: >
+        {# Liste dynamique des entités CPU/RAM Add-ons #}
+        {% set add_ons = states.sensor 
+          | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur|memory_percent|pourcentage_de_memoire|pourcentage_de_mémoire')
+          | rejectattr('entity_id', 'search', 'node_|qemu_|pc_debian_')
+          | map(attribute='entity_id') | list %}
+        
+        {# Liste des capteurs Système Hôte #}
+        {% set globals = [
+          'sensor.system_monitor_utilisation_du_processeur',
+          'sensor.glances_ha_utilisation_de_la_memoire',
+          'sensor.glances_ha_memoire_utilisee',
+          'sensor.glances_ha_utilisation_disque_data',
+          'sensor.system_monitor_temperature_du_processeur'
+        ] %}
+        
+        {{ (add_ons + globals) | unique | list }}
+mode: parallel
+max: 5

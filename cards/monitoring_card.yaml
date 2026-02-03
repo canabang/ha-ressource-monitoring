@@ -1,0 +1,179 @@
+type: vertical-stack
+cards:
+  # --- SECTION 1 : GLOBAL (Host) ---
+  - type: custom:mushroom-chips-card
+    alignment: center
+    card_mod:
+      style: |
+        ha-card {
+          --chip-border-radius: 33px;
+          --chip-box-shadow: none;
+          --chip-background: transparent;
+          --chip-border-width: 1px;
+          --chip-border-color: rgba(255, 255, 255, 0.1);
+        }
+    chips:
+      - type: template
+        content: "{{ states('sensor.system_monitor_utilisation_du_processeur') }} %"
+        icon: mdi:cpu-64-bit
+        icon_color: blue
+      - type: template
+        content: "{{ states('sensor.glances_ha_utilisation_de_la_memoire') | round(0) }} %"
+        icon: m3r:memory
+        icon_color: green
+      - type: template
+        content: >
+          {% set ram_mib = states('sensor.glances_ha_memoire_utilisee') | float(0) %}
+          {{ (ram_mib / 1024) | round(1) }} GiB
+        icon: mdi:memory
+        icon_color: green
+      - type: template
+        content: "{{ states('sensor.frigate_intel_vaapi_gpu_load') | default('0', true) }}%"
+        icon: mdi:expansion-card
+        icon_color: amber
+      - type: template
+        content: "{{ states('sensor.glances_ha_utilisation_disque_data') }}%"
+        icon: mdi:harddisk
+        icon_color: purple
+      - type: template
+        content: "{{ states('sensor.system_monitor_temperature_du_processeur') | round(0) }} °C"
+        icon: mdi:thermometer
+        icon_color: orange
+
+  # --- SECTION 2 : ADD-ONS ---
+  - type: custom:auto-entities
+    card:
+      type: vertical-stack
+    card_param: cards
+    update_interval: 5
+    filter:
+      template: |
+        {% set icons = {
+          'Frigate': 'phu:frigate',
+          'Music Assistant': 'm3rf:library-music',
+          'porcupine': 'mdi:microphone-settings',
+          'Glances': 'm3r:visibility',
+          'Home Assistant Core': 'mdi:home-assistant',
+          'Home Assistant Supervisor': 'mdi:home-assistant',
+          'Piper': 'mdi:comment-text',
+          'Matter Server': 'phu:matter',
+          'ESPHome': 'phu:esphome',
+          'Beszel Agent': 'mdi:monitor-dashboard',
+          'Advanced SSH': 'mdi:ssh',
+          'Samba share': 'phu:samba',
+          'Studio Code Server': 'mdi:microsoft-visual-studio-code',
+          'Network UPS Tools': 'phu:apc-ups-upright',
+          'Samba Backup': 'phu:samba',
+          'Speech-to-Phrase': 'mdi:waveform'
+        } %}
+
+        {% set add_ons = namespace(items=[]) %}
+        {% set sensors = states.sensor 
+          | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
+          | rejectattr('entity_id', 'search', 'node_|qemu_|pc_debian_')
+          | selectattr('state', 'ne', 'unavailable')
+          | selectattr('state', 'ne', 'unknown')
+          | list %}
+
+        {% for s in sensors %}
+          {%- set cpu = s.state | float(0) -%}
+          {%- set name = state_attr(s.entity_id, 'friendly_name') 
+             | replace(' CPU Percent', '') | replace(' CPU percent', '')
+             | replace(' Pourcentage du processeur', '') | replace(' (Full Access)', '') | trim -%}
+          
+          {%- set base = s.entity_id | replace('sensor.', '') | replace('_cpu_percent', '') | replace('_pourcentage_du_processeur', '') -%}
+          {%- set status_ent = "binary_sensor." ~ base ~ "_en_cours_d_execution" -%}
+          {%- set switch_ent = "switch." ~ base -%}
+
+          {%- if '_cpu_percent' in s.entity_id -%}
+            {%- set cpu_ent = s.entity_id -%}
+            {%- set ram_ent = s.entity_id | replace('_cpu_percent', '_memory_percent') -%}
+          {%- else -%}
+            {%- set cpu_ent = s.entity_id -%}
+            {%- set r_t = s.entity_id | replace('_pourcentage_du_processeur', '_pourcentage_de_mémoire') -%}
+            {%- set ram_ent = r_t if states(r_t) != 'unknown' else s.entity_id | replace('_pourcentage_du_processeur', '_pourcentage_de_memoire') -%}
+          {%- endif -%}
+          
+          {%- set ram = states(ram_ent) | float(0) -%}
+          {%- set priority = cpu if cpu > ram else ram -%}
+          {%- set item = {"name": name, "priority": priority, "cpu_ent": cpu_ent, "ram_ent": ram_ent, "sw_ent": switch_ent, "st_ent": status_ent} -%}
+          {%- set add_ons.items = add_ons.items + [item] -%}
+        {% endfor %}
+
+        {% set sorted_items = add_ons.items | sort(attribute='priority', reverse=true) %}
+        {% set final_cards = namespace(top=[], rest=[]) %}
+        
+        {% for item in sorted_items %}
+          {%- set icon_ns = namespace(found='mdi:package-variant-closed') -%}
+          {%- for key, val in icons.items() -%}
+            {%- if key|lower in item.name|lower -%}{%- set icon_ns.found = val -%}{%- endif -%}
+          {%- endfor -%}
+          
+          {%- set card = {
+            "type": "custom:mushroom-template-card",
+            "entity": item.sw_ent,
+            "primary": item.name,
+            "secondary": "{% if states('" ~ item.st_ent ~ "') == 'off' %} Inactif {% else %} CPU: {{ states('" ~ item.cpu_ent ~ "') }}% | RAM: {{ states('" ~ item.ram_ent ~ "') }}% {% endif %}",
+            "icon": icon_ns.found,
+            "icon_color": "{% set cpu = states('" ~ item.cpu_ent ~ "') | float(0) %} {{ 'blue' if cpu < 25 else 'orange' if cpu < 60 else 'red' }}",
+            "badge_icon": "{% if states('" ~ item.st_ent ~ "') == 'on' %} mdi:play {% elif states('" ~ item.st_ent ~ "') == 'off' %} mdi:stop {% else %} none {% endif %}",
+            "badge_color": "{% if states('" ~ item.st_ent ~ "') == 'on' %} green {% elif states('" ~ item.st_ent ~ "') == 'off' %} red {% else %} transparent {% endif %}",
+            "layout": "horizontal",
+            "double_tap_action": {
+              "action": "call-service",
+              "service": "switch.toggle",
+              "target": {
+                "entity_id": item.sw_ent
+              }
+            },
+            "hold_action": { "action": "more-info" },
+            "card_mod": {
+              "style": "ha-card { 
+                border: 1px solid rgba(255, 255, 255, 0.1) !important;
+                border-radius: 33px !important;
+                box-shadow: none !important;
+                background-color: transparent !important;
+                {% set status = states('" ~ item.st_ent ~ "') %}
+                {% if status == 'on' %}
+                  {% set cpu = states('" ~ item.cpu_ent ~ "') | float(0) %}
+                  {% set ram = states('" ~ item.ram_ent ~ "') | float(0) %}
+                  {% set c_col = 'rgba(33, 150, 243, 0.4)' if cpu < 25 else 'rgba(255, 152, 0, 0.4)' if cpu < 60 else 'rgba(244, 67, 54, 0.4)' %}
+                  {% set r_col = 'rgba(76, 175, 80, 0.4)' if ram < 40 else 'rgba(255, 152, 0, 0.4)' if ram < 70 else 'rgba(244, 67, 54, 0.4)' %}
+                  background: linear-gradient(to right, {{ c_col }} {{ cpu }}%, transparent {{ cpu }}%) no-repeat bottom 8px center / calc(100% - 20px) 6px, 
+                              linear-gradient(to right, {{ r_col }} {{ ram }}%, transparent {{ ram }}%) no-repeat bottom 0px center / calc(100% - 20px) 6px !important; 
+                {% endif %}
+                padding-bottom: 14px !important; 
+                margin-bottom: 8px;
+              }"
+            }
+          } -%}
+          
+          {% if loop.index <= 5 %}
+            {% set final_cards.top = final_cards.top + [card] %}
+          {% else %}
+            {% set final_cards.rest = final_cards.rest + [card] %}
+          {% endif %}
+        {% endfor %}
+
+        {% set collapse_card = {
+          "type": "custom:fold-entity-row",
+          "head": {
+            "type": "custom:mushroom-template-card",
+            "primary": "Autres services (" ~ (sorted_items | length - 5) ~ ")",
+            "secondary": "Double-clic pour basculer",
+            "icon": "mdi:chevron-down",
+            "icon_color": "disabled",
+            "layout": "horizontal",
+            "card_mod": {
+              "style": "ha-card { border: 1px solid rgba(255, 255, 255, 0.1) !important; border-radius: 33px !important; background: transparent !important; box-shadow: none !important; }"
+            }
+          },
+          "padding": 0,
+          "open": false,
+          "entities": final_cards.rest,
+          "card_mod": {
+            "style": "div#items { padding: 0 !important; margin: 0 !important; } .fold-entity-row-head { padding: 0 !important; } :host { --fold-entity-row-head-color: transparent; }"
+          }
+        } %}
+        
+        {{ final_cards.top + [collapse_card] }}
