@@ -91,13 +91,39 @@ Que ce soit pour afficher les jauges ou détecter un crash, nous utilisons le m�
 *   **Robuste** : Si un Add-on change de nom, il suffit de "Recréer les identifiants" dans Home Assistant pour qu'il soit détecté.
 
 ### 2. Logique de la Carte (Frontend)
-La carte [`monitoring_card.yaml`](cards/monitoring_card.yaml) utilise ce filtre pour :
-1.  **Reconstruire les entités** : Deviner le `binary_sensor` (Statut) à partir du sensor CPU.
-2.  **Trier par urgence** : `CPU > RAM` ? On affiche le plus critique.
-3.  **Sticky Bottom** : Les Add-ons éteints (`OFF`) sont forcés en bas de liste.
+La carte [`monitoring_card.yaml`](cards/monitoring_card.yaml) pousse la logique plus loin pour l'affichage :
+
+#### A. Reconstruction intelligente des entités
+Pour chaque capteur trouvé, le code "devine" les chemins des autres entités (RAM, Binary Sensor) en essayant les suffixes courants (`_running`, `_en_cours_d_execution`).
+```jinja
+{%- set st_run = "binary_sensor." ~ base ~ "_running" -%}
+{%- set st_exec = "binary_sensor." ~ base ~ "_en_cours_d_execution" -%}
+{%- set status_ent = st_run if states(st_run) != 'unknown' else st_exec -%}
+```
+C'est ce qui garantit l'affichage du badge Play/Stop pour tous les services, incluant VS Code ou File Editor.
+
+#### B. Calcul de Priorité (Sticky-Bottom)
+Pour savoir quel Add-on doit figurer dans le **Top 5**, on calcule la valeur maximale entre son CPU et sa RAM.
+*Astuce* : Si l'Add-on est détecté comme éteint (`off`), on lui donne une priorité de `-1` pour le forcer à descendre tout en bas de la liste.
+```jinja
+{%- set priority = -1 if states(status_ent) == 'off' else (cpu if cpu > ram else ram) -%}
+```
+
+#### C. Répartition "Top 5" vs "Reste"
+On divise la liste triée en deux groupes pour garder un dashboard épuré.
+```jinja
+{% for item in sorted_items %}
+  {# ... génération de la carte Mushroom ... #}
+  {% if loop.index <= 5 %}
+    {# Ajout à la liste visible #}
+  {% else %}
+    {# Ajout à la liste déroulante (Fold row) #}
+  {% endif %}
+{% endfor %}
+```
 
 ### 3. Logique de l'Automatisation (Backend)
-L'automatisation [`alertes_ressources.yaml`](automations/alertes_ressources.yaml) reprend exactement le même principe pour ses triggers :
+L'automatisation [`alertes_ressources.yaml`](automations/alertes_ressources.yaml) reprend exactement le même filtre de base pour ses triggers :
 *   **Trigger "Crash"** : Si le sensor CPU existe MAIS que le statut est OFF -> Alerte.
 *   **Trigger "Surcharge"** : Si le sensor CPU dépasse 80% pendant 5 min -> Alerte.
 *   **Mapping Intelligent** : Un dictionnaire interne corrige les noms exotiques (`frigate_full_access` -> `frigate`) pour afficher la bonne icône dans la notification.
