@@ -134,7 +134,7 @@ cards:
                 box-shadow: none !important;
                 background-color: transparent !important;
                 {% set status = states('" ~ item.st_ent ~ "') %}
-                {% if status == 'on' %}
+                {% if status != 'off' %}
                   {% set cpu = states('" ~ item.cpu_ent ~ "') | float(0) %}
                   {% set ram = states('" ~ item.ram_ent ~ "') | float(0) %}
                   {% set c_col = 'rgba(33, 150, 243, 0.4)' if cpu < 25 else 'rgba(255, 152, 0, 0.4)' if cpu < 60 else 'rgba(244, 67, 54, 0.4)' %}
