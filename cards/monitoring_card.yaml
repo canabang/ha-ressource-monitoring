@@ -86,6 +86,8 @@ cards:
           {%- set st_run = "binary_sensor." ~ base ~ "_running" -%}
           {%- set st_exec = "binary_sensor." ~ base ~ "_en_cours_d_execution" -%}
           {%- set status_ent = st_run if states(st_run) != 'unknown' else st_exec -%}
+          {# Sécurité supplémentaire : si l'entité n'existe pas, on force une valeur pour éviter les erreurs de template #}
+          {%- set status_ent = status_ent if states(status_ent) != 'unknown' else st_run -%}
           
           {%- set switch_ent = "switch." ~ base -%}
           
