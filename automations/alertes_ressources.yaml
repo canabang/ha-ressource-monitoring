@@ -187,7 +187,9 @@ action:
       details: >
         - CPU : {{ infos_coupable.cpu }}%
         - RAM : {{ infos_coupable.ram }}%
+        {% if infos_coupable.disk != 0 %}
         - Disque : {{ infos_coupable.disk }}%
+        {% endif %}
         - État : {{ infos_coupable.etat }}
       
       consigne: "Sois technique, sarcastique et bref."
