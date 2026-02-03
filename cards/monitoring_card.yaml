@@ -1,6 +1,5 @@
 type: vertical-stack
 cards:
-  # --- SECTION 1 : GLOBAL (Host) ---
   - type: custom:mushroom-chips-card
     alignment: center
     card_mod:
@@ -18,17 +17,21 @@ cards:
         icon: mdi:cpu-64-bit
         icon_color: blue
       - type: template
-        content: "{{ states('sensor.glances_ha_utilisation_de_la_memoire') | round(0) }} %"
+        content: >-
+          {{ states('sensor.glances_ha_utilisation_de_la_memoire') | round(0) }}
+          %
         icon: m3r:memory
         icon_color: green
       - type: template
         content: >
-          {% set ram_mib = states('sensor.glances_ha_memoire_utilisee') | float(0) %}
-          {{ (ram_mib / 1024) | round(1) }} GiB
+          {% set ram_mib = states('sensor.glances_ha_memoire_utilisee') |
+          float(0) %} {{ (ram_mib / 1024) | round(1) }} GiB
         icon: mdi:memory
         icon_color: green
       - type: template
-        content: "{{ states('sensor.frigate_intel_vaapi_gpu_load') | default('0', true) }}%"
+        content: >-
+          {{ states('sensor.frigate_intel_vaapi_gpu_load') | default('0', true)
+          }}%
         icon: mdi:expansion-card
         icon_color: amber
       - type: template
@@ -36,18 +39,18 @@ cards:
         icon: mdi:harddisk
         icon_color: purple
       - type: template
-        content: "{{ states('sensor.system_monitor_temperature_du_processeur') | round(0) }} °C"
+        content: >-
+          {{ states('sensor.system_monitor_temperature_du_processeur') |
+          round(0) }} °C
         icon: mdi:thermometer
         icon_color: orange
-
-  # --- SECTION 2 : ADD-ONS ---
   - type: custom:auto-entities
     card:
       type: vertical-stack
     card_param: cards
     update_interval: 5
     filter:
-      template: |
+      template: >
         {% set icons = {
           'Frigate': 'phu:frigate',
           'Music Assistant': 'm3rf:library-music',
@@ -67,7 +70,9 @@ cards:
           'Speech-to-Phrase': 'mdi:waveform'
         } %}
 
+
         {% set add_ons = namespace(items=[]) %}
+
         {% set sensors = states.sensor 
           | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
           | rejectattr('entity_id', 'search', 'node_|qemu_|pc_debian_')
@@ -105,9 +110,13 @@ cards:
           {%- set add_ons.items = add_ons.items + [item] -%}
         {% endfor %}
 
-        {% set sorted_items = add_ons.items | sort(attribute='priority', reverse=true) %}
+
+        {% set sorted_items = add_ons.items | sort(attribute='priority',
+        reverse=true) %}
+
         {% set final_cards = namespace(top=[], rest=[]) %}
-        
+
+
         {% for item in sorted_items %}
           {%- set icon_ns = namespace(found='mdi:package-variant-closed') -%}
           {%- for key, val in icons.items() -%}
@@ -160,12 +169,12 @@ cards:
           {% endif %}
         {% endfor %}
 
+
         {% set collapse_card = {
           "type": "custom:fold-entity-row",
           "head": {
             "type": "custom:mushroom-template-card",
             "primary": "Autres services (" ~ (sorted_items | length - 5) ~ ")",
-            "secondary": "Double-clic pour basculer",
             "icon": "mdi:chevron-down",
             "icon_color": "disabled",
             "layout": "horizontal",
@@ -180,5 +189,6 @@ cards:
             "style": "div#items { padding: 0 !important; margin: 0 !important; } .fold-entity-row-head { padding: 0 !important; } :host { --fold-entity-row-head-color: transparent; }"
           }
         } %}
-        
+
+
         {{ final_cards.top + [collapse_card] }}
