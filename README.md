@@ -34,52 +34,77 @@ Créez une carte **Manuel** et collez le contenu de [monitoring_card.yaml](cards
 ### 2. Le Rafraîchissement Turbo (Backend)
 Pour une réactivité à 5 secondes (recommandé si vos capteurs sont exclus du recorder), importez l'automation [turbo_refresh.yaml](automations/turbo_refresh.yaml).
 
-## Comment ça fonctionne ? (Explications techniques)
+## Analyse détaillée du code
 
-Le cœur de cette carte repose sur un template Jinja complexe qui automatise la découverte de vos services. Voici les points clés :
+Le code de la carte (YAML) utilise le moteur de template Jinja2 de Home Assistant pour automatiser la gestion des entités. Voici le découpage par étapes :
 
-### 1. La Découverte Dynamique & Filtrage
-Le code scanne automatiquement tous les capteurs de votre système pour isoler les Add-ons. Il utilise une logique de filtrage par motifs (Regex) :
+### 1. Collecte et Filtrage initial
+On commence par isoler tous les capteurs CPU des Add-ons en excluant les entités parasites.
 ```jinja
-| selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
-| rejectattr('entity_id', 'search', 'node_|qemu_|pc_debian_')
+{% set sensors = states.sensor 
+  | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
+  | rejectattr('entity_id', 'search', 'node_|qemu_|pc_debian_')
+  | selectattr('state', 'ne', 'unavailable')
+  | selectattr('state', 'ne', 'unknown')
+  | list %}
 ```
-- **Inclusion** : On capture les entités se terminant par `cpu_percent` (Supervisor anglais) ou `pourcentage_du_processeur` (Supervisor français).
-- **Exclusion** : On élimine les entités parasites liées à la virtualisation (Proxmox, QEMU, nœuds réseau) pour ne garder que les véritables Add-ons.
-- **Nettoyage** : Seules les entités ayant un état valide (`ne unknown/unavailable`) sont traitées.
+- `selectattr(...)` : On ne garde que les capteurs liés aux processeurs (français et anglais).
+- `rejectattr(...)` : On exclue explicitement les entités de virtualisation (Proxmox/QEMU) qui pollueraient la liste.
+- `unavailable/unknown` : On ignore les services qui ne renvoient pas de données (ex: Add-on arrêté sans capteur actif).
 
-### 2. Reconstruction des Contrôles
-Pour chaque Add-on trouvé, le code "devine" ses entités de statut et de switch :
+### 2. Traitement et Construction des entités
+Pour chaque capteur trouvé, le code "devine" les chemins des autres entités liées (RAM, Switch et Statut).
 ```jinja
-{%- set base = s.entity_id | replace('sensor.', '') | replace('_cpu_percent', '') ... -%}
-{%- set status_ent = "binary_sensor." ~ base ~ "_en_cours_d_execution" -%}
-{%- set switch_ent = "switch." ~ base -%}
+{% for s in sensors %}
+  {%- set cpu = s.state | float(0) -%}
+  {%- set name = state_attr(s.entity_id, 'friendly_name') 
+     | replace(' CPU Percent', '') | replace(' Pourcentage du processeur', '') | trim -%}
+  
+  {# Calcul de la base pour retrouver switch et statut #}
+  {%- set base = s.entity_id | replace('sensor.', '') | replace('_cpu_percent', '') | replace('_pourcentage_du_processeur', '') -%}
+  {%- set status_ent = "binary_sensor." ~ base ~ "_en_cours_d_execution" -%}
+  {%- set switch_ent = "switch." ~ base -%}
+
+  {# Détection automatique de l'entité RAM correspondante #}
+  {%- if '_cpu_percent' in s.entity_id -%}
+    {%- set ram_ent = s.entity_id | replace('_cpu_percent', '_memory_percent') -%}
+  {%- else -%}
+    {%- set r_t = s.entity_id | replace('_pourcentage_du_processeur', '_pourcentage_de_mémoire') -%}
+    {%- set ram_ent = r_t if states(r_t) != 'unknown' else s.entity_id | replace('_pourcentage_du_processeur', '_pourcentage_de_memoire') -%}
+  {%- endif -%}
+{% endfor %}
 ```
-C'est ce qui permet d'afficher le badge Play/Stop et d'autoriser le Double-Tap sans que vous ayez à configurer chaque service manuellement.
+Le code utilise des filtres `replace` en cascade pour nettoyer le nom affiché et reconstruire les `entity_id` du switch Supervisor et du `binary_sensor` de statut.
 
-### 3. Le Tri par Priorité
-Au lieu de trier simplement par nom, le code calcule une "priorité" pour chaque Add-on :
+### 3. Calcul de Priorité et Tri
+Pour savoir quel Add-on doit figurer dans le **Top 5**, on calcule la valeur maximale entre son CPU et sa RAM.
 ```jinja
+{%- set ram = states(ram_ent) | float(0) -%}
 {%- set priority = cpu if cpu > ram else ram -%}
+{%- set item = {"name": name, "priority": priority, "cpu_ent": cpu_ent, "ram_ent": ram_ent, "sw_ent": switch_ent, "st_ent": status_ent} -%}
+{%- set add_ons.items = add_ons.items + [item] -%}
 ```
-Cela permet de faire remonter en haut de liste l'élément qui consomme le plus, que ce soit en processeur ou en mémoire vive.
+Puis on trie la liste finale par cette `priority` :
+```jinja
+{% set sorted_items = add_ons.items | sort(attribute='priority', reverse=true) %}
+```
 
-### 4. Les Barres de Progression Dynamiques
-Les barres ne sont pas des images mais des `linear-gradient` générés en temps réel via CSS (`card-mod`) :
-```css
-background: linear-gradient(to right, {{ c_col }} {{ cpu }}%, transparent {{ cpu }}%) no-repeat bottom 8px center;
+### 4. Répartition Top 5 et Reste
+On divise la liste en deux groupes pour garder un dashboard propre.
+```jinja
+{% set final_cards = namespace(top=[], rest=[]) %}
+{% for item in sorted_items %}
+  {# ... génération de la carte Mushroom ... #}
+  {% if loop.index <= 5 %}
+    {% set final_cards.top = final_cards.top + [card] %}
+  {% else %}
+    {% set final_cards.rest = final_cards.rest + [card] %}
+  {% endif %}
+{% endfor %}
 ```
-Le code calcule les couleurs selon des seuils définis, offrant un retour visuel immédiat.
 
-### 5. Interactivité Sécurisée
-Pour éviter d'éteindre un service critique par erreur, l'action est liée au **Double-Tap** :
-```yaml
-double_tap_action:
-  action: call-service
-  service: switch.toggle
-  target:
-    entity_id: item.sw_ent
-```
+### 5. Assemblage final
+On fusionne le Top 5 permanent avec un bloc `custom:fold-entity-row` (en bas) qui contient tout le reste de la liste, camouflé derrière un menu déroulant.
 L'entité `sw_ent` est reconstruite dynamiquement pour chaque Add-on à partir de son nom de capteur CPU.
 
 ### 4. Attribution Automatique des Icônes
