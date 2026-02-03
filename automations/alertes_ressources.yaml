@@ -81,7 +81,7 @@ trigger:
   - variables:
       infos_coupable: >
         {# On initialise l'enquête avec des valeurs par défaut #}
-        {% set enquete = namespace(resultat={'nom': 'Système', 'cpu': 0, 'ram': 0, 'disk': 0, 'etat': 'Inconnu'}) %}
+        {% set enquete = namespace(resultat={'nom': 'Système', 'identifiant_icone': 'homeassistant', 'cpu': 0, 'ram': 0, 'disk': 0, 'etat': 'Inconnu'}) %}
         
         {# 1. SCAN : On récupère tous les candidats via leur CPU #}
         {% set liste_capteurs_cpu = states.sensor 
@@ -107,6 +107,7 @@ trigger:
               {# C'est lui ! On clôture l'enquête #}
               {% set enquete.resultat = {
                 'nom': state_attr(entite_statut_reelle, 'friendly_name') | default(nom_simplifie),
+                'identifiant_icone': nom_simplifie,
                 'cpu': states(capteur_cpu.entity_id),
                 'ram': states(capteur_cpu.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')),
                 'etat': 'OFF'
@@ -120,6 +121,7 @@ trigger:
            {% if gros_consommateur %}
              {% set enquete.resultat = {
                 'nom': state_attr(gros_consommateur.entity_id, 'friendly_name') | default(gros_consommateur.entity_id),
+                'identifiant_icone': gros_consommateur.entity_id.replace('sensor.', '').replace('_cpu_percent', '').replace('_pourcentage_du_processeur', ''),
                 'cpu': gros_consommateur.state,
                 'ram': states(gros_consommateur.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')),
                 'etat': 'SURCHARGE'
@@ -132,6 +134,7 @@ trigger:
            {# CAS DISQUE #}
            {% set enquete.resultat = {
               'nom': 'Stockage Système',
+              'identifiant_icone': 'homeassistant',
               'cpu': states('sensor.system_monitor_utilisation_du_processeur'),
               'ram': states('sensor.glances_ha_utilisation_de_la_memoire'),
               'disk': states('sensor.glances_ha_utilisation_disque_data'),
@@ -142,6 +145,7 @@ trigger:
            {# CAS GPU #}
            {% set enquete.resultat = {
               'nom': 'Puce Graphique (Intel)',
+              'identifiant_icone': 'frigate',
               'cpu': states('sensor.frigate_intel_vaapi_gpu_load'),
               'ram': states('sensor.glances_ha_utilisation_de_la_memoire'),
               'disk': states('sensor.glances_ha_utilisation_disque_data'),
@@ -152,6 +156,7 @@ trigger:
            {# CAS CASSE GÉNÉRALE (Hog/Heat/Ram) #}
            {% set enquete.resultat = {
               'nom': 'Serveur Hôte (N100)',
+              'identifiant_icone': 'homeassistant',
               'cpu': states('sensor.system_monitor_utilisation_du_processeur'),
               'ram': states('sensor.glances_ha_utilisation_de_la_memoire'),
               'disk': states('sensor.glances_ha_utilisation_disque_data'),
@@ -161,6 +166,51 @@ trigger:
         
         {# On renvoie les conclusions #}
         {{ enquete.resultat }}
+
+  # --------------------------------------------------------------------------
+  # B. BRAIN : K-2SO GÉNÈRE LE MESSAGE 🧠
+  # --------------------------------------------------------------------------
+  - action: script.k_2so_generateur_de_message
+    data:
+      mission: >
+        {% set info = enquete.resultat %}
+        {% if info.etat == 'OFF' %}
+          Panne Critique : {{ info.nom }} ne répond plus.
+        {% elif 'SURCHARGE' in info.etat %}
+          Surcharge Système : {{ info.nom }} souffre.
+        {% elif 'DISQUE' in info.etat %}
+          Espace Disque Critique : {{ info.nom }} est saturé.
+        {% else %}
+          Alerte Ressources : {{ info.nom }} est en zone rouge.
+        {% endif %}
+      
+      details: >
+        - CPU : {{ enquete.resultat.cpu }}%
+        - RAM : {{ enquete.resultat.ram }}%
+        - Disque : {{ enquete.resultat.disk }}%
+        - État : {{ enquete.resultat.etat }}
+      
+      consigne: "Sois technique, sarcastique et bref."
+    response_variable: generated_message
+
+  # --------------------------------------------------------------------------
+  # C. NOTIFICATION DISCORD (Style "Visuel" avec Icône dynamique) 🚨
+  # --------------------------------------------------------------------------
+  - action: script.notification_discord
+    data:
+      # Titre Visuel
+      nom: >
+        {% if enquete.resultat.etat == 'OFF' %}
+          🚨 CRASH : {{ enquete.resultat.nom }}
+        {% else %}
+          ⚠️ {{ enquete.resultat.etat }}
+        {% endif %}
+      
+      # Message K-2SO
+      description: "{{ generated_message.data }}"
+      
+      # Icône Dynamique (Offielle Home Assistant Brands)
+      image_url: "https://brands.home-assistant.io/{{ enquete.resultat.identifiant_icone }}/icon.png"
 
   # --------------------------------------------------------------------------
   # B. BRAIN : K-2SO GÉNÈRE LE MESSAGE 🧠
