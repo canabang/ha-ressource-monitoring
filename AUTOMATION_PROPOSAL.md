@@ -22,22 +22,22 @@ Il y a deux écoles pour surveiller tes Add-ons :
 
 On surveille **Tout** ce qui est sur la carte (Chips + Liste) sans rien nommer en dur.
 
-#### A. Les Chips (La Santé Complète de l'Hôte) 🏥
-On surveille les 5 points vitaux présents sur tes Chips :
-1.  **CPU Global** : `sensor.system_monitor_utilisation_du_processeur` > 90%
-2.  **RAM** : `sensor.glances_ha_utilisation_de_la_memoire` > 90%
-3.  **Température** : `sensor.system_monitor_temperature_du_processeur` > 75°C
-4.  **Disque (Data)** : `sensor.glances_ha_utilisation_disque_data` > 90% (Nouveau)
-5.  **GPU (Frigate)** : `sensor.frigate_intel_vaapi_gpu_load` > 90% (Nouveau)
+#### A. Les Chips (Santé Hôte : Sources Mixtes) 🏥
+On utilise **exactement** les mêmes capteurs que ceux affichés en haut de ta carte :
 
-#### B. La Liste des Add-ons (Le Scanner Intelligent) 🕵️‍♂️
-*Pourquoi passer par le CPU ?*
-C'est une astuce technique : Home Assistant n'a pas de "groupe" officiel listant tous les Add-ons.
-Par contre, Glances crée systématiquement un capteur `_cpu_percent` pour chaque conteneur actif.
--> C'est donc le moyen le plus fiable de **découvrir** dynamiquement ce qui tourne, pour ensuite aller vérifier son statut `_running`.
+1.  **CPU Global** : `sensor.system_monitor_utilisation_du_processeur` (Source: **System Monitor**)
+2.  **RAM** : `sensor.glances_ha_utilisation_de_la_memoire` (Source: **Glances**)
+3.  **Température** : `sensor.system_monitor_temperature_du_processeur` (Source: **System Monitor**)
+4.  **Disque (Data)** : `sensor.glances_ha_utilisation_disque_data` (Source: **Glances**)
+5.  **GPU** : `sensor.frigate_intel_vaapi_gpu_load` (Source: **Frigate**)
 
-*   **Trigger 1 (Crash)** : On liste les services via leur CPU, et on vérifie si leur bouton `_running` est OFF.
-*   **Trigger 2 (Surcharge)** : Si n'importe quel `sensor` finissant par `_cpu_percent` dépasse 80%.
+#### B. La Liste des Add-ons (Le Scanner) 🕵️‍♂️
+*Pourquoi on filtre par le CPU ?*
+C'est pour isoler les "Machines" parmi les milliers d'entités de ton HA.
+Les services comme *Supervisor* ou *Glances* créent un capteur `_cpu_percent` pour chaque conteneur actif. C'est notre "balise" pour identifier ce qui tourne.
+
+*   **Trigger 1 (Crash)** : On détecte l'Add-on via son CPU, puis on vérifie son binary_sensor `_running` associé.
+*   **Trigger 2 (Surcharge)** : On vérifie si ce même capteur CPU dépasse 80%.
 
 **Code YAML Final pour l'Automatisation :**
 ```yaml
