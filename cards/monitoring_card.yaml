@@ -67,6 +67,7 @@ cards:
           'Speech-to-Phrase': 'mdi:waveform'
         } %}
 
+        {% set add_ons = namespace(items=[]) %}
         {% set sensors = states.sensor 
           | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
           | rejectattr('entity_id', 'search', 'node_|qemu_|pc_debian_')
