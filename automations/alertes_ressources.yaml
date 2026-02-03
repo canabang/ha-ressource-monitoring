@@ -126,8 +126,28 @@ trigger:
              } %}
            {% endif %}
         
+           {% endif %}
+
+        {% elif trigger.id == 'host_disk' %}
+           {# CAS DISQUE #}
+           {% set enquete.resultat = {
+              'nom': 'Stockage Système',
+              'cpu': states('sensor.system_monitor_utilisation_du_processeur'),
+              'ram': states('sensor.glances_ha_utilisation_de_la_memoire'),
+              'etat': 'DISQUE PLEIN (' ~ states('sensor.glances_ha_utilisation_disque_data') ~ '%)'
+           } %}
+
+        {% elif trigger.id == 'host_gpu' %}
+           {# CAS GPU #}
+           {% set enquete.resultat = {
+              'nom': 'Puce Graphique (Intel)',
+              'cpu': states('sensor.frigate_intel_vaapi_gpu_load'),
+              'ram': states('sensor.glances_ha_utilisation_de_la_memoire'),
+              'etat': 'SURCHARGE GPU'
+           } %}
+        
         {% else %}
-           {# CAS HÔTE (Hog/Heat) #}
+           {# CAS CASSE GÉNÉRALE (Hog/Heat/Ram) #}
            {% set enquete.resultat = {
               'nom': 'Serveur Hôte (N100)',
               'cpu': states('sensor.system_monitor_utilisation_du_processeur'),
