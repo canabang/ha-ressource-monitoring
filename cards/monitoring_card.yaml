@@ -7,6 +7,10 @@
 # - Card-mod
 # - Fold-entity-row
 # --------------------------------------------------------------------------------------------------
+# INSTALLATION :
+# 1. Créez une nouvelle carte "Manuel" dans votre Dashboard
+# 2. Collez ce code YAML
+# --------------------------------------------------------------------------------------------------
 type: vertical-stack
 cards:
   # --- SECTION 1 : GLOBAL (Host) ---
@@ -57,6 +61,11 @@ cards:
     update_interval: 5
     filter:
       template: |
+        {# ================================================================== #}
+        {# 🛠️ CONFIG : DICTIONNAIRE D'ICÔNES #}
+        {# ================================================================== #}
+        {# BUT : Associer un joli logo (MDI, PHU...) à un nom d'Add-on. #}
+        {# Si le nom de l'addon contient 'Frigate', on affichera l'icône 'phu:frigate'. #}
         {% set icons = {
           'Frigate': 'phu:frigate',
           'Music Assistant': 'm3rf:library-music',
@@ -76,9 +85,15 @@ cards:
           'Speech-to-Phrase': 'mdi:waveform'
         } %}
 
+        {# ================================================================== #}
+        {# 🔍 ÉTAPE 1 : RÉCUPÉRATION DES SENSORS #}
+        {# ================================================================== #}
+        {# On fait la liste de tous les sensors de Home Assistant... #}
         {% set add_ons = namespace(items=[]) %}
         {% set sensors = states.sensor 
+          {# 1. ...qui contiennent 'cpu_percent' (ou la version FR) dans leur ID #}
           | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
+          {# 2. ...en excluant les processus systèmes "bruit" (Node, QEMU...) #}
           | rejectattr('entity_id', 'search', 'node_|qemu_|pc_debian_')
           | list %}
 
@@ -88,16 +103,27 @@ cards:
              | replace(' CPU Percent', '') | replace(' CPU percent', '')
              | replace(' Pourcentage du processeur', '') | replace(' (Full Access)', '') | trim -%}
           
-          {# Reconstruction intelligente des entités liées #}
+          {# ================================================================== #}
+          {# 🔗 ÉTAPE 2 : RECONSTRUCTION DES LIENS #}
+          {# ================================================================== #}
+          {# PROBLÈME : On a juste le sensor CPU (ex: sensor.frigate_cpu) #}
+          {# MISSION : Trouver le reste (RAM, Bouton ON/OFF, Statut Running) #}
+          
+          {# A. EXTRATION DU NOM DE BASE (ex: 'frigate') #}
           {%- set base = s.entity_id | replace('sensor.', '') | replace('_cpu_percent', '') | replace('_pourcentage_du_processeur', '') -%}
           
-          {# Essai de plusieurs suffixes courants pour le statut #}
+          {# B. DÉTECTION DU STATUT (ON/OFF) #}
+          {# On "tente" les noms habituels créés par Home Assistant Supervisor #}
           {%- set st_run = "binary_sensor." ~ base ~ "_running" -%}
           {%- set st_exec = "binary_sensor." ~ base ~ "_en_cours_d_execution" -%}
+          
+          {# C. SÉLECTION DU BON SENSOR (Celui qui n'est pas 'unknown') #}
           {%- set status_ent = st_run if states(st_run) != 'unknown' else st_exec -%}
-          {# Sécurité supplémentaire : si l'entité n'existe pas, on force une valeur pour éviter les erreurs de template #}
+          
+          {# SECURITÉ : Si on a rien trouvé, on garde 'st_run' pour éviter de faire planter le code #}
           {%- set status_ent = status_ent if states(status_ent) != 'unknown' else st_run -%}
           
+          {# D. DÉDUCTION DU BOUTON SWITCH #}
           {%- set switch_ent = "switch." ~ base -%}
           
           {%- if '_cpu_percent' in s.entity_id -%}
@@ -111,11 +137,22 @@ cards:
           
           {%- set ram = states(ram_ent) | float(0) -%}
           {%- set st_state = states(status_ent) -%}
-          {# Sticky-Bottom : Les inactifs descendent très bas. Les systèmes restent triables par ressources. #}
-          {%- set is_sys = 'home_assistant_' in base -%}
+
+          {# ================================================================== #}
+          {# 📊 ÉTAPE 3 : CALCUL DE PRIORITÉ (TRI) #}
+          {# ================================================================== #}
+          {# LE BUT : Afficher les problèmes en haut. #}
+          
+          {# 1. SCORE DE BASE = Le chiffre le plus haut entre CPU et RAM #}
           {%- set priority = (cpu if cpu > ram else ram) -%}
+          
+          {# 2. MALUS : Si c'est un Add-on externe et qu'il est ÉTEINT #}
+          {# -> On le force à descendre tout en bas (-100) #}
           {%- if not is_sys and st_state == 'off' -%}
             {%- set priority = -100 -%}
+          
+          {# 3. MALUS : Si l'entité est indisponible (bug) #}
+          {# -> On le cache un peu mais moins loin (-50) #}
           {%- elif not is_sys and st_state in ['unknown', 'unavailable'] and cpu < 0.1 -%}
             {%- set priority = -50 -%}
           {%- endif -%}
@@ -143,6 +180,9 @@ cards:
             "badge_icon": "{% if states('" ~ item.st_ent ~ "') == 'on' %} mdi:play {% elif states('" ~ item.st_ent ~ "') == 'off' %} mdi:stop {% else %} none {% endif %}",
             "badge_color": "{% if states('" ~ item.st_ent ~ "') == 'on' %} green {% elif states('" ~ item.st_ent ~ "') == 'off' %} red {% else %} transparent {% endif %}",
             "layout": "horizontal",
+            
+            {# --- ACTION : DOUBLE CLIC --- #}
+            {# Permet de relancer l'Add-on sans ouvrir le menu détails #}
             "double_tap_action": {
               "action": "call-service",
               "service": "switch.toggle",

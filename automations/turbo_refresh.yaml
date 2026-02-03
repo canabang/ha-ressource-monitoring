@@ -5,6 +5,10 @@
 # CELA REMPLIT LA BASE DE DONNÉES (RECORDER) TRÈS VITE.
 # CONSEIL : Excluez ces entités de votre configuration 'recorder' si vous utilisez ce mode.
 # --------------------------------------------------------------------------------------------------
+# INSTALLATION :
+# 1. Copiez le contenu dans une nouvelle automatisation (Mode YAML)
+# 2. Sauvegardez
+# --------------------------------------------------------------------------------------------------
 alias: "🏠 System - Turbo Monitoring Refresh 5s"
 description: "Force la mise à jour des entités de ressources toutes les 5 secondes."
 trigger:

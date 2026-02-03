@@ -1,3 +1,12 @@
+# --------------------------------------------------------------------------------------------------
+# BLUEPRINT : SYSTÈME DE SURVEILLANCE & ALERTES
+# --------------------------------------------------------------------------------------------------
+# INSTALLATION :
+# 1. Copiez ce fichier dans /config/blueprints/automation/perso/alertes_ressources.yaml
+# 2. Allez dans Outils de développement > YAML > Cliquez sur "Automatisations" (Rechargement)
+# 3. Créez une automatisation : Paramètres > Automatisations > Créer > Utiliser un blueprint
+# 4. Sélectionnez "Système • Surveillance & Alertes 🛡️"
+# --------------------------------------------------------------------------------------------------
 blueprint:
   name: "Système • Surveillance & Alertes 🛡️"
   description: >
@@ -134,44 +143,70 @@ trigger_variables:
   cpu_threshold_var: !input addon_cpu_threshold
 
 trigger:
-  # 1. ADD-ON CRASH
+  # -----------------------------------------------------------------------------------------
+  # 1. ADD-ON CRASH (Détection Intelligente)
+  # -----------------------------------------------------------------------------------------
+  # Logique : On scanne tous les sensors CPU.
+  # Si un sensor CPU existe (state != unknown) MAIS que son statut binaire est 'OFF' ou 'unavailable',
+  # alors c'est que l'Add-on a crashé mais que l'entité existe toujours.
   - platform: template
     id: "addon_crash"
     value_template: >
-      {# NOTE: On utilise la variable defined dans trigger_variables #}
+      {# ========================================================== #}
+      {# 🔎 TRIGGER 1 : DÉTECTION DE CRASH SILENCIEUX #}
+      {# ========================================================== #}
+      
+      {# IMPORT INPUT : On récupère la Regex d'exclusion #}
       {% set pattern = exclude_regex_var %}
+
+      {# 1. SCAN : Liste de tous les sensors CPU valides #}
       {% set sensors = states.sensor 
          | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
          | rejectattr('entity_id', 'search', pattern)
          | list %}
       {% set ns = namespace(crashed=[]) %}
+      
+      {# 2. ANALYSE : Pour chaque CPU trouvé... #}
       {% for cpu in sensors %}
+        {# ... On devine le nom du Binary Sensor (Statut) #}
         {% set base = cpu.entity_id.replace('sensor.', '').replace('_cpu_percent', '').replace('_pourcentage_du_processeur', '') %}
         {% set st_run = "binary_sensor." ~ base ~ "_running" %}
         {% set st_exec = "binary_sensor." ~ base ~ "_en_cours_d_execution" %}
+        
+        {# On vérifie lequel existe vraiment #}
         {% set status_ent = st_run if states(st_run) != 'unknown' else st_exec %}
-        {# On vérifie si le CPU existe (state != unknown) MAIS que le statut est OFF #}
+        
+        {# 3. VERDICT : Si CPU existe MAIS Statut = OFF -> CRASH ! #}
         {% if states(status_ent) == 'off' %}
           {% set ns.crashed = ns.crashed + [1] %}
         {% endif %}
       {% endfor %}
+      
+      {# DÉCLENCHEUR : Si au moins 1 crash est trouvé #}
       {{ ns.crashed | count > 0 }}
     for: 
       minutes: !input addon_crash_duration
 
+  # -----------------------------------------------------------------------------------------
   # 2. SURCHARGE CPU ADD-ON
+  # -----------------------------------------------------------------------------------------
+  # Logique : Très simple. Est-ce que QUELQU'UN dépasse le seuil (ex: 80%) ?
   - platform: template
     id: "cpu_overload"
     value_template: >
+      {# ========================================================== #}
+      {# 🔥 TRIGGER 2 : Surcharge CPU #}
+      {# ========================================================== #}
       {% set pattern = exclude_regex_var %}
       {% set threshold = cpu_threshold_var | float(80) %}
+      
       {{ states.sensor 
          | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
          | rejectattr('entity_id', 'search', pattern)
-         | map(attribute='state') 
-         | map('float', 0) 
-         | select('gt', threshold) 
-         | list | count > 0 }}
+         | map(attribute='state')       {# 1. On prend que la valeur #}
+         | map('float', 0)              {# 2. On convertit en nombre #}
+         | select('gt', threshold)      {# 3. On garde ceux > seuil #}
+         | list | count > 0 }}          {# 4. Si liste non vide -> ALERTE #}
     for: 
       minutes: !input addon_cpu_duration
 
@@ -201,33 +236,39 @@ trigger:
     id: "host_gpu"
 
 action:
-  # --- CALCUL DES VARIABLES (ENQUÊTE) ---
+  # --- CALCUL DES VARIABLES (L'ENQUÊTE) ---
+  # Le trigger a juste dit "Il y a un problème".
+  # Cette section va trouver QUI est le problème et remplir l'objet 'infos_coupable'.
   - variables:
-      # Import des inputs pour usage Jinja
+      # ... (Imports des inputs)
       exclude_filter: !input exclude_regex
       cpu_threshold: !input addon_cpu_threshold
       
-      # Entités Hôte
       ent_cpu_global: !input sensor_host_cpu_global
       ent_ram: !input sensor_host_ram
       ent_disk: !input sensor_host_disk
       ent_gpu: !input sensor_host_gpu
 
       infos_coupable: >
+        {# ========================================================== #}
+        {# 🕵️‍♂️ L'ENQUÊTE : QUI EST COUPABLE ? #}
+        {# ========================================================== #}
+        {# Initialisation d'un rapport vide #}
         {% set enquete = namespace(resultat={'nom': 'Système', 'identifiant_icone': 'homeassistant', 'cpu': 0, 'ram': 0, 'disk': 0, 'etat': 'Inconnu'}) %}
         
-        {# SCAN #}
+        {# LISTE DES SUSPECTS (Tous les Addons) #}
         {% set liste_capteurs_cpu = states.sensor 
            | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
            | rejectattr('entity_id', 'search', exclude_filter)
            | list %}
 
+        {# --- SCÉNARIO 1 : C'EST UN CRASH --- #}
         {% if trigger.id == 'addon_crash' %}
-          {# CAS CRASH #}
           {% set corrections_icones = {
             'frigate_full_access': 'frigate', 'studio_code_server': 'hassio', 
             'ssh_web_terminal': 'hassio', 'glances': 'glances'
           } %}
+          {# RECHERCHE DU DISPARU #}
           {% for capteur_cpu in liste_capteurs_cpu %}
             {% set id_brut = capteur_cpu.entity_id.replace('sensor.', '').replace('_cpu_percent', '').replace('_pourcentage_du_processeur', '') %}
             {% set entite_running_anglais = "binary_sensor." ~ id_brut ~ "_running" %}
@@ -235,6 +276,7 @@ action:
             {% set entite_statut_reelle = entite_running_anglais if states(entite_running_anglais) != 'unknown' else entite_running_francais %}
             
             {% if states(entite_statut_reelle) == 'off' %}
+              {# COUPABLE IDENTIFIÉ ! #}
               {% set enquete.resultat = {
                 'nom': state_attr(entite_statut_reelle, 'friendly_name') | default(id_brut),
                 'identifiant_icone': corrections_icones.get(id_brut, id_brut),
@@ -246,8 +288,9 @@ action:
             {% endif %}
           {% endfor %}
 
+        {# --- SCÉNARIO 2 : C'EST UNE SURCHARGE --- #}
         {% elif trigger.id == 'cpu_overload' %}
-           {# CAS SURCHARGE #}
+           {# RECHERCHE DU PLUS GROS CONSOMMATEUR #}
            {% set gros_consommateur = liste_capteurs_cpu 
               | selectattr('state', 'is_number')
               | selectattr('state', 'gt', cpu_threshold)
