@@ -22,22 +22,27 @@ Il y a deux écoles pour surveiller tes Add-ons :
 
 On surveille **Tout** ce qui est sur la carte (Chips + Liste) sans rien nommer en dur.
 
-#### A. Les Chips (La Santé de l'Hôte) 🏥
-Ce sont tes indicateurs globaux (CPU, RAM, Température).
-*   **Trigger** : Si `sensor.system_monitor_*` ou `sensor.glances_*` dépasse un seuil critique.
-    *   Température > 75°C
-    *   RAM > 90%
-    *   CPU > 90%
+#### A. Les Chips (La Santé Complète de l'Hôte) 🏥
+On surveille les 5 points vitaux présents sur tes Chips :
+1.  **CPU Global** : `sensor.system_monitor_utilisation_du_processeur` > 90%
+2.  **RAM** : `sensor.glances_ha_utilisation_de_la_memoire` > 90%
+3.  **Température** : `sensor.system_monitor_temperature_du_processeur` > 75°C
+4.  **Disque (Data)** : `sensor.glances_ha_utilisation_disque_data` > 90% (Nouveau)
+5.  **GPU (Frigate)** : `sensor.frigate_intel_vaapi_gpu_load` > 90% (Nouveau)
 
-#### B. La Liste des Add-ons (Le Scanner) 🕵️‍♂️
-On utilise un **Template Trigger** pour détecter tout Add-on qui flanche.
-*   **Trigger** : Si n'importe quel `binary_sensor` finissant par `_running` passe à `off`.
-*   **Trigger** : Si n'importe quel `sensor` finissant par `_cpu_percent` dépasse 80%.
+#### B. La Liste des Add-ons (Le Scanner Intelligent) 🕵️‍♂️
+*Pourquoi passer par le CPU ?*
+C'est une astuce technique : Home Assistant n'a pas de "groupe" officiel listant tous les Add-ons.
+Par contre, Glances crée systématiquement un capteur `_cpu_percent` pour chaque conteneur actif.
+-> C'est donc le moyen le plus fiable de **découvrir** dynamiquement ce qui tourne, pour ensuite aller vérifier son statut `_running`.
+
+*   **Trigger 1 (Crash)** : On liste les services via leur CPU, et on vérifie si leur bouton `_running` est OFF.
+*   **Trigger 2 (Surcharge)** : Si n'importe quel `sensor` finissant par `_cpu_percent` dépasse 80%.
 
 **Code YAML Final pour l'Automatisation :**
 ```yaml
 trigger:
-  # 1. HOST HEALTH (Les Chips)
+  # 1. HOST HEALTH (Les Chips - Complet)
   - platform: numeric_state
     entity_id: sensor.system_monitor_temperature_du_processeur
     above: 75
@@ -46,6 +51,14 @@ trigger:
     entity_id: sensor.glances_ha_utilisation_de_la_memoire
     above: 90
     id: "host_ram"
+  - platform: numeric_state
+    entity_id: sensor.glances_ha_utilisation_disque_data
+    above: 90
+    id: "host_disk"
+  - platform: numeric_state
+    entity_id: sensor.frigate_intel_vaapi_gpu_load
+    above: 90
+    id: "host_gpu"
   
   # 2. ADD-ONS HEALTH (Scanner Dynamique)
   - platform: template
