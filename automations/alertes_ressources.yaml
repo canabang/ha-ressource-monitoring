@@ -173,7 +173,7 @@ action:
   - action: script.k_2so_generateur_de_message
     data:
       mission: >
-        {% set info = enquete.resultat %}
+        {% set info = infos_coupable %}
         {% if info.etat == 'OFF' %}
           Panne Critique : {{ info.nom }} ne répond plus.
         {% elif 'SURCHARGE' in info.etat %}
@@ -185,10 +185,10 @@ action:
         {% endif %}
       
       details: >
-        - CPU : {{ enquete.resultat.cpu }}%
-        - RAM : {{ enquete.resultat.ram }}%
-        - Disque : {{ enquete.resultat.disk }}%
-        - État : {{ enquete.resultat.etat }}
+        - CPU : {{ infos_coupable.cpu }}%
+        - RAM : {{ infos_coupable.ram }}%
+        - Disque : {{ infos_coupable.disk }}%
+        - État : {{ infos_coupable.etat }}
       
       consigne: "Sois technique, sarcastique et bref."
     response_variable: generated_message
@@ -200,16 +200,16 @@ action:
     data:
       # Titre Visuel
       nom: >
-        {% if enquete.resultat.etat == 'OFF' %}
-          🚨 CRASH : {{ enquete.resultat.nom }}
+        {% if infos_coupable.etat == 'OFF' %}
+          🚨 CRASH : {{ infos_coupable.nom }}
         {% else %}
-          ⚠️ {{ enquete.resultat.etat }}
+          ⚠️ {{ infos_coupable.etat }}
         {% endif %}
       
       # Message K-2SO
       description: "{{ generated_message.data }}"
       
       # Icône Dynamique (Offielle Home Assistant Brands)
-      image_url: "https://brands.home-assistant.io/{{ enquete.resultat.identifiant_icone }}/icon.png"
+      image_url: "https://brands.home-assistant.io/{{ infos_coupable.identifiant_icone }}/icon.png"
 
 
