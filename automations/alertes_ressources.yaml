@@ -84,7 +84,7 @@ trigger:
         {% set enquete = namespace(resultat={'nom': 'Système', 'cpu': 0, 'ram': 0, 'etat': 'Inconnu'}) %}
         
         {# 1. SCAN : On récupère tous les candidats via leur CPU #}
-        {% set cpu_sensors = states.sensor 
+        {% set liste_capteurs_cpu = states.sensor 
            | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
            | rejectattr('entity_id', 'search', 'node_|qemu_|pc_debian_')
            | list %}
@@ -92,19 +92,23 @@ trigger:
         {# 2. ANALYSE SELON LE TRIGGER #}
         {% if trigger.id == 'addon_crash' %}
           {# CAS CRASH : On cherche quel Add-on est éteint #}
-          {% for cpu in cpu_sensors %}
-            {# Nettoyage du nom #}
-            {% set base = cpu.entity_id.replace('sensor.', '').replace('_cpu_percent', '').replace('_pourcentage_du_processeur', '') %}
-            {% set status_ent = "binary_sensor." ~ base ~ "_running" %}
-            {% set st_exec = "binary_sensor." ~ base ~ "_en_cours_d_execution" %}
-            {% set final_st = status_ent if states(status_ent) != 'unknown' else st_exec %}
+          {% for capteur_cpu in liste_capteurs_cpu %}
+            {# a. Nettoyage du nom pour trouver la racine #}
+            {% set nom_simplifie = capteur_cpu.entity_id.replace('sensor.', '').replace('_cpu_percent', '').replace('_pourcentage_du_processeur', '') %}
             
-            {% if states(final_st) == 'off' %}
+            {# b. On construit les noms potentiels du binary_sensor #}
+            {% set entite_running_anglais = "binary_sensor." ~ nom_simplifie ~ "_running" %}
+            {% set entite_running_francais = "binary_sensor." ~ nom_simplifie ~ "_en_cours_d_execution" %}
+            
+            {# c. On garde celui qui existe vraiment #}
+            {% set entite_statut_reelle = entite_running_anglais if states(entite_running_anglais) != 'unknown' else entite_running_francais %}
+            
+            {% if states(entite_statut_reelle) == 'off' %}
               {# C'est lui ! On clôture l'enquête #}
               {% set enquete.resultat = {
-                'nom': state_attr(final_st, 'friendly_name') | default(base),
-                'cpu': states(cpu.entity_id),
-                'ram': states(cpu.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')),
+                'nom': state_attr(entite_statut_reelle, 'friendly_name') | default(nom_simplifie),
+                'cpu': states(capteur_cpu.entity_id),
+                'ram': states(capteur_cpu.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')),
                 'etat': 'OFF'
               } %}
             {% endif %}
@@ -112,12 +116,12 @@ trigger:
 
         {% elif trigger.id == 'cpu_overload' %}
            {# CAS SURCHARGE : On cherche le plus gros consommateur #}
-           {% set hog = cpu_sensors | sort(attribute='state', reverse=True) | first %}
-           {% if hog %}
+           {% set gros_consommateur = liste_capteurs_cpu | sort(attribute='state', reverse=True) | first %}
+           {% if gros_consommateur %}
              {% set enquete.resultat = {
-                'nom': state_attr(hog.entity_id, 'friendly_name') | default(hog.entity_id),
-                'cpu': hog.state,
-                'ram': states(hog.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')),
+                'nom': state_attr(gros_consommateur.entity_id, 'friendly_name') | default(gros_consommateur.entity_id),
+                'cpu': gros_consommateur.state,
+                'ram': states(gros_consommateur.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')),
                 'etat': 'SURCHARGE'
              } %}
            {% endif %}
