@@ -95,7 +95,7 @@ action:
           {# CAS CRASH : On cherche quel Add-on est éteint #}
           {% for capteur_cpu in liste_capteurs_cpu %}
             {# a. Nettoyage du nom pour trouver la racine #}
-            {% set nom_simplifie = capteur_cpu.entity_id.replace('sensor.', '').replace('_cpu_percent', '').replace('_pourcentage_du_processeur', '') %}
+            {% set nom_simplifie = capteur_cpu.entity_id.replace('sensor.', '').replace('_cpu_percent', '').replace('_pourcentage_du_processeur', '').replace('_full_access', '') %}
             
             {# b. On construit les noms potentiels du binary_sensor #}
             {% set entite_running_anglais = "binary_sensor." ~ nom_simplifie ~ "_running" %}
@@ -122,7 +122,7 @@ action:
            {% if gros_consommateur %}
              {% set enquete.resultat = {
                 'nom': state_attr(gros_consommateur.entity_id, 'friendly_name') | default(gros_consommateur.entity_id),
-                'identifiant_icone': gros_consommateur.entity_id.replace('sensor.', '').replace('_cpu_percent', '').replace('_pourcentage_du_processeur', ''),
+                'identifiant_icone': gros_consommateur.entity_id.replace('sensor.', '').replace('_cpu_percent', '').replace('_pourcentage_du_processeur', '').replace('_full_access', ''),
                 'cpu': gros_consommateur.state | float(0),
                 'ram': states(gros_consommateur.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')) | float(0),
                 'etat': 'SURCHARGE'
