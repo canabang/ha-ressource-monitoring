@@ -8,7 +8,7 @@ trigger:
   # --------------------------------------------------------------------------
   - platform: template
     id: "addon_crash"
-    alias: "Crash Add-on"
+    alias: "Crash Add-on (1 min)"
     value_template: >
       {# On récupère tous les sensors CPU #}
       {% set cpu_sensors = states.sensor 
@@ -39,7 +39,7 @@ trigger:
   # --------------------------------------------------------------------------
   - platform: template
     id: "cpu_overload"
-    alias: "Surcharge Add-on"
+    alias: "Surcharge Add-on (>80% - 5 min)"
     value_template: >
       {{ states.sensor 
          | selectattr('entity_id', 'search', 'cpu_percent|pourcentage_du_processeur')
@@ -58,28 +58,28 @@ trigger:
     above: 75
     for: "00:02:00"
     id: "host_heat"
-    alias: "Surchauffe Hôte"
+    alias: "Surchauffe Hôte (>75°C - 2 min)"
 
   - platform: numeric_state
     entity_id: sensor.glances_ha_utilisation_de_la_memoire
     above: 90
     for: "00:05:00"
     id: "host_ram"
-    alias: "Surcharge RAM Hôte"
+    alias: "Surcharge RAM Hôte (>90% - 5 min)"
 
   - platform: numeric_state
     entity_id: sensor.glances_ha_utilisation_disque_data
     above: 90
     for: "00:05:00"
     id: "host_disk"
-    alias: "Disque Plein"
+    alias: "Disque Plein (>90% - 5 min)"
 
   - platform: numeric_state
     entity_id: sensor.frigate_intel_vaapi_gpu_load
     above: 90
     for: "00:02:00"
     id: "host_gpu"
-    alias: "Surcharge GPU"
+    alias: "Surcharge GPU (>90% - 2 min)"
 
   # --------------------------------------------------------------------------
   # A. ENQUÊTE (Variables) : Qui appelle ?
