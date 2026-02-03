@@ -18,26 +18,55 @@ On utilisera ton script `k2so` existant pour générer le message.
 
 Il y a deux écoles pour surveiller tes Add-ons :
 
-#### Option A : La "Liste Blanche" (Ce que j'avais fait)
-On liste explicitement chaque add-on.
-*   ✅ **Avantage** : On choisit précisément ce qu'on surveille (pas d'alerte pour un truc de test).
-*   ❌ **Inconvénient** : Si tu installes un nouvel Add-on, il faut modifier l'automatisation.
+### 3. Les Déclencheurs (Stratégie Dynamique)
 
-#### Option B : Le "Scanner Dynamique" (Reco) 🧠
-On utilise un `Template Trigger` qui surveille **tous** les capteurs finissant par `_running` ou `_cpu_percent`.
-*   ✅ **Avantage** : 100% Automatique. Tu installes un Add-on, il est surveillé direct.
-*   ❌ **Inconvénient** : Peut être bavard si tu as des services instables que tu ne veux PAS surveiller.
+On surveille **Tout** ce qui est sur la carte (Chips + Liste) sans rien nommer en dur.
 
-**Exemple de code pour l'Option B (Scanner) :**
+#### A. Les Chips (La Santé de l'Hôte) 🏥
+Ce sont tes indicateurs globaux (CPU, RAM, Température).
+*   **Trigger** : Si `sensor.system_monitor_*` ou `sensor.glances_*` dépasse un seuil critique.
+    *   Température > 75°C
+    *   RAM > 90%
+    *   CPU > 90%
+
+#### B. La Liste des Add-ons (Le Scanner) 🕵️‍♂️
+On utilise un **Template Trigger** pour détecter tout Add-on qui flanche.
+*   **Trigger** : Si n'importe quel `binary_sensor` finissant par `_running` passe à `off`.
+*   **Trigger** : Si n'importe quel `sensor` finissant par `_cpu_percent` dépasse 80%.
+
+**Code YAML Final pour l'Automatisation :**
 ```yaml
 trigger:
+  # 1. HOST HEALTH (Les Chips)
+  - platform: numeric_state
+    entity_id: sensor.system_monitor_temperature_du_processeur
+    above: 75
+    id: "host_heat"
+  - platform: numeric_state
+    entity_id: sensor.glances_ha_utilisation_de_la_memoire
+    above: 90
+    id: "host_ram"
+  
+  # 2. ADD-ONS HEALTH (Scanner Dynamique)
   - platform: template
-    # Déclenche si N'IMPORTE QUEL add-on passe à OFF
     value_template: >
       {{ states.binary_sensor 
          | selectattr('entity_id', 'search', '_running$') 
          | selectattr('state', 'eq', 'off') 
          | list | count > 0 }}
+    id: "addon_crash"
+
+  # 3. ADD-ONS HOGS (Scanner Surcharge)
+  - platform: template
+    value_template: >
+      {{ states.sensor 
+         | selectattr('entity_id', 'search', '_cpu_percent$') 
+         | map(attribute='state') 
+         | map('float', 0) 
+         | select('gt', 80) 
+         | list | count > 0 }}
+    for: "00:05:00"
+    id: "cpu_hog"
 ```
 
 ### 4. Les Options d'Actions
