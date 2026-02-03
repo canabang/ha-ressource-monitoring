@@ -138,7 +138,7 @@ Ton script `k_2so_generateur_de_message` renvoie la variable `generated_message`
   - action: script.notification_discord
     data:
       nom: "Monitor System"
-      description: "{{ generated_message.generated_message.data }}"
+      description: "{{ generated_message.data }}"
       image_url: >
         {% if enquete.resultat.etat == 'OFF' %}
           https://brands.home-assistant.io/hassio/icon.png
@@ -157,7 +157,7 @@ Ton script `k_2so_generateur_de_message` renvoie la variable `generated_message`
         {% else %}
           ⚠️ ALERTE RESSOURCES
         {% endif %}
-      description: "{{ generated_message.generated_message.data }}"
+      description: "{{ generated_message.data }}"
       image_url: "https://brands.home-assistant.io/glances/icon.png"
 
   # OPTION 3 : La "Mentions" (Ping tout le monde si critique)
