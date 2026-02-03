@@ -109,8 +109,8 @@ action:
               {% set enquete.resultat = {
                 'nom': state_attr(entite_statut_reelle, 'friendly_name') | default(nom_simplifie),
                 'identifiant_icone': nom_simplifie,
-                'cpu': states(capteur_cpu.entity_id),
-                'ram': states(capteur_cpu.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')),
+                'cpu': states(capteur_cpu.entity_id) | float(0),
+                'ram': states(capteur_cpu.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')) | float(0),
                 'etat': 'OFF'
               } %}
             {% endif %}
@@ -123,8 +123,8 @@ action:
              {% set enquete.resultat = {
                 'nom': state_attr(gros_consommateur.entity_id, 'friendly_name') | default(gros_consommateur.entity_id),
                 'identifiant_icone': gros_consommateur.entity_id.replace('sensor.', '').replace('_cpu_percent', '').replace('_pourcentage_du_processeur', ''),
-                'cpu': gros_consommateur.state,
-                'ram': states(gros_consommateur.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')),
+                'cpu': gros_consommateur.state | float(0),
+                'ram': states(gros_consommateur.entity_id.replace('cpu', 'memory').replace('processeur', 'memoire')) | float(0),
                 'etat': 'SURCHARGE'
              } %}
 
@@ -135,9 +135,9 @@ action:
            {% set enquete.resultat = {
               'nom': 'Stockage Système',
               'identifiant_icone': 'homeassistant',
-              'cpu': states('sensor.system_monitor_utilisation_du_processeur'),
-              'ram': states('sensor.glances_ha_utilisation_de_la_memoire'),
-              'disk': states('sensor.glances_ha_utilisation_disque_data'),
+              'cpu': states('sensor.system_monitor_utilisation_du_processeur') | float(0),
+              'ram': states('sensor.glances_ha_utilisation_de_la_memoire') | float(0),
+              'disk': states('sensor.glances_ha_utilisation_disque_data') | float(0),
               'etat': 'DISQUE PLEIN'
            } %}
 
@@ -146,9 +146,9 @@ action:
            {% set enquete.resultat = {
               'nom': 'Puce Graphique (Intel)',
               'identifiant_icone': 'frigate',
-              'cpu': states('sensor.frigate_intel_vaapi_gpu_load'),
-              'ram': states('sensor.glances_ha_utilisation_de_la_memoire'),
-              'disk': states('sensor.glances_ha_utilisation_disque_data'),
+              'cpu': states('sensor.frigate_intel_vaapi_gpu_load') | float(0),
+              'ram': states('sensor.glances_ha_utilisation_de_la_memoire') | float(0),
+              'disk': states('sensor.glances_ha_utilisation_disque_data') | float(0),
               'etat': 'SURCHARGE GPU'
            } %}
         
@@ -157,9 +157,9 @@ action:
            {% set enquete.resultat = {
               'nom': 'Serveur Hôte (N100)',
               'identifiant_icone': 'homeassistant',
-              'cpu': states('sensor.system_monitor_utilisation_du_processeur'),
-              'ram': states('sensor.glances_ha_utilisation_de_la_memoire'),
-              'disk': states('sensor.glances_ha_utilisation_disque_data'),
+              'cpu': states('sensor.system_monitor_utilisation_du_processeur') | float(0),
+              'ram': states('sensor.glances_ha_utilisation_de_la_memoire') | float(0),
+              'disk': states('sensor.glances_ha_utilisation_disque_data') | float(0),
               'etat': 'CRITIQUE'
            } %}
         {% endif %}
