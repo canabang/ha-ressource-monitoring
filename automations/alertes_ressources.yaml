@@ -1,4 +1,4 @@
-alias: "System - Monitor & Alert"
+alias: "Système • Surveillance & Alertes 🛡️"
 description: "Surveillance dynamique des Add-ons (basée sur CPU) et de l'hôte."
 
 trigger:
