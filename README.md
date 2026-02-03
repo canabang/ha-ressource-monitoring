@@ -2,6 +2,8 @@
 
 Carte de monitoring avancée pour Home Assistant permettant de suivre en temps réel les ressources (CPU/RAM) de l'hôte et des Add-ons (**Home Assistant Supervisor**).
 
+![Dashboard Preview](assets/dashboard_preview.png)
+
 ## Filtres & Tri Dynamique
 - **Host Monitoring** : Affichage des constantes vitales (CPU, RAM, Disque, Température) via des Chips.
 - **Top Add-ons** : Classement automatique des services par consommation.
@@ -113,3 +115,5 @@ Une liste de correspondances (`icons`) au début du code permet d'associer des i
 ## Remarques
 Les icônes sont attribuées dynamiquement par mots-clés dans le template de la carte. Si un Add-on n'est pas reconnu, il utilisera une icône par défaut ou vous pouvez l'ajouter dans la liste `icons` au début du code YAML.
 
+## Licence
+Ce projet est sous licence MIT. N'hésitez pas à l'adapter et à le partager !
