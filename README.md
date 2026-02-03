@@ -54,39 +54,21 @@ On commence par isoler tous les capteurs CPU des Add-ons en excluant les entité
 - **Exclusion** : On élimine les entités parasites liées à la virtualisation (Proxmox, QEMU, nœuds réseau).
 - **Persistance** : Contrairement à d'autres solutions, cette carte conserve les Add-ons arrêtés (`unavailable`) dans la liste pour vous permettre de les relancer d'un simple double-clic.
 
-### 2. Traitement et Construction des entités
-Pour chaque capteur trouvé, le code "devine" les chemins des autres entités liées (RAM, Switch et Statut).
+### 2. Reconstruction intelligente des entités
+Pour chaque capteur trouvé, le code "devine" les chemins des autres entités (RAM, Switch et Statut) en essayant les suffixes courants (`_running` ou `_en_cours_d_execution`).
 ```jinja
-{% for s in sensors %}
-  {%- set cpu = s.state | float(0) -%}
-  {%- set name = state_attr(s.entity_id, 'friendly_name') 
-     | replace(' CPU Percent', '') | replace(' Pourcentage du processeur', '') | trim -%}
-  
-  {# Calcul de la base pour retrouver switch et statut #}
-  {%- set base = s.entity_id | replace('sensor.', '') | replace('_cpu_percent', '') | replace('_pourcentage_du_processeur', '') -%}
-  {%- set status_ent = "binary_sensor." ~ base ~ "_en_cours_d_execution" -%}
-  {%- set switch_ent = "switch." ~ base -%}
-
-  {# Détection automatique de l'entité RAM correspondante #}
-  {%- if '_cpu_percent' in s.entity_id -%}
-    {%- set ram_ent = s.entity_id | replace('_cpu_percent', '_memory_percent') -%}
-  {%- else -%}
-    {%- set r_t = s.entity_id | replace('_pourcentage_du_processeur', '_pourcentage_de_mémoire') -%}
-    {%- set ram_ent = r_t if states(r_t) != 'unknown' else s.entity_id | replace('_pourcentage_du_processeur', '_pourcentage_de_memoire') -%}
-  {%- endif -%}
-{% endfor %}
+{%- set st_run = "binary_sensor." ~ base ~ "_running" -%}
+{%- set st_exec = "binary_sensor." ~ base ~ "_en_cours_d_execution" -%}
+{%- set status_ent = st_run if states(st_run) != 'unknown' else st_exec -%}
 ```
-Le code utilise des filtres `replace` en cascade pour nettoyer le nom affiché et reconstruire les `entity_id` du switch Supervisor et du `binary_sensor` de statut.
+C'est ce qui garantit l'affichage du badge Play/Stop pour tous les services, incluant VS Code ou File Editor.
 
-### 3. Calcul de Priorité et Tri
-Pour savoir quel Add-on doit figurer dans le **Top 5**, on calcule la valeur maximale entre son CPU et sa RAM.
+### 3. Calcul de Priorité et Tri (Sticky-Bottom pour les inactifs)
+Pour savoir quel Add-on doit figurer dans le **Top 5**, on calcule la valeur maximale entre son CPU et sa RAM. Si l'Add-on est détecté comme arrêté (`off`), on lui donne une priorité de `-1` pour le forcer à descendre en bas de liste.
 ```jinja
-{%- set ram = states(ram_ent) | float(0) -%}
-{%- set priority = cpu if cpu > ram else ram -%}
-{%- set item = {"name": name, "priority": priority, "cpu_ent": cpu_ent, "ram_ent": ram_ent, "sw_ent": switch_ent, "st_ent": status_ent} -%}
-{%- set add_ons.items = add_ons.items + [item] -%}
+{%- set priority = -1 if states(status_ent) == 'off' else (cpu if cpu > ram else ram) -%}
 ```
-Puis on trie la liste finale par cette `priority` :
+Puis on trie la liste finale par cette `priority`.
 ```jinja
 {% set sorted_items = add_ons.items | sort(attribute='priority', reverse=true) %}
 ```
