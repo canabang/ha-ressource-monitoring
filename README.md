@@ -94,7 +94,7 @@ Si vous ne souhaitez pas utiliser l'IA ou modifier du code yaml, utilisez le Blu
     *   Allez dans **Outils de développement** > **YAML**.
     *   Cliquez sur **Automatisations** pour recharger la liste des plans.
 3.  **Création de l'automatisation** :
-    *   Allez dans **Paramètres** > **Automatisations** > **Créer** > **Utiliser un plan**.
+    *   Allez dans **Paramètres** > **Automatisations** > **Créer** > **Utiliser un blueprint**.
     *   Recherchez et sélectionnez **"Système • Surveillance & Alertes 🛡️"**.
 4.  **Configuration** :
     *   Réglez simplement vos seuils et choisissez votre appareil de notification !
